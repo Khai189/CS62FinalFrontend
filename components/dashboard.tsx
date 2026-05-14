@@ -67,6 +67,11 @@ export function Dashboard() {
 
   const [selectedItemId, setSelectedItemId] = useState("");
   const [totalRecs, setTotalRecs] = useState(4);
+
+  const [bidderId, setBidderId] = useState("");
+  const [bidderName, setBidderName] = useState("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [maxPriceFilter, setMaxPriceFilter] = useState<number | "">("");
   const [itemPayload, setItemPayload] = useState<ListItemPayload>({
     itemId: "",
     itemName: "",
@@ -108,6 +113,40 @@ export function Dashboard() {
     setRecommendedItems([]);
     setSelectedItemId("");
     setHighestBidText("");
+  const authSummary = useMemo(
+    () => `${credentials.username}:${"*".repeat(Math.max(credentials.password.length, 1))}`,
+    [credentials]
+  );
+
+  const filteredFeed = useMemo(() => {
+    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+    return feedItems.filter((item) => {
+      const itemName = item.itemName?.toLowerCase() ?? "";
+      const startingPrice = item.startingPrice ?? 0;
+
+      const matchesSearch =
+        normalizedSearchTerm === "" || itemName.includes(normalizedSearchTerm);
+      const matchesPrice = maxPriceFilter === "" || startingPrice <= maxPriceFilter;
+      return matchesSearch && matchesPrice;
+    });
+  }, [feedItems, searchTerm, maxPriceFilter]);
+
+  function rememberBidders(incoming: Bidder[]) {
+    setBidders((current) => {
+      const merged = mergeBidders(current, incoming);
+      const firstBidder = merged[0];
+      if (firstBidder) {
+        setSelectedBidderId((currentId) => currentId || firstBidder.bidderId);
+        setLookupBidderId((currentId) => currentId || firstBidder.bidderId);
+        setBidPayload((currentBid) => ({
+          ...currentBid,
+          bidderId: currentBid.bidderId || firstBidder.bidderId
+        }));
+        setRemoveBidderId((currentId) => currentId || firstBidder.bidderId);
+      }
+      return merged;
+    });
   }
 
   function rememberItems(incoming: BidItem[]) {
@@ -495,25 +534,115 @@ export function Dashboard() {
                 </div>
               </SectionCard>
 
-              <ItemGrid
-                title="Marketplace"
-                subtitle="Live Catalog"
-                items={catalogItems}
-                selectedItemId={selectedItemId}
-                emptyMessage="No live catalog items are available yet. An auctioneer can list the first item."
-                onSelect={handleSelectItem}
-              />
+          {/* Marketplace with Filters */}
+          <SectionCard
+            title="Marketplace"
+            subtitle="Live catalog of active items."
+          >
+            {/* Filter Controls */}
+            <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="flex-1">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Search Item Type/Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Textbook, Laptop..."
+                  className="w-full rounded-lg border-slate-300 px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Max Price ($)
+                </label>
+                <input
+                  type="number"
+                  placeholder="Any price"
+                  className="w-full rounded-lg border-slate-300 px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  value={maxPriceFilter}
+                  onChange={(e) => setMaxPriceFilter(e.target.value ? Number(e.target.value) : "")}
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setMaxPriceFilter("");
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+
+            {filteredFeed.length === 0 ? (
+              <p className="text-sm text-slate-500 italic">
+                No items match your current filters or the marketplace is empty.
+              </p>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredFeed.map((item) => (
+                  <div
+                    key={item.itemId}
+                    className={`rounded-2xl border border-[color:var(--line)] bg-white/80 p-4 py-3 text-ink shadow-sm transition-all ${
+                      selectedItemId === item.itemId ? 'ring-2 ring-blue-500' : ''
+                    }`}
+                    onClick={() => setSelectedItemId(item.itemId)}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-bold text-lg">{item.itemName}</h3>
+                      <span className="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded">
+                        ${item.startingPrice}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-1">ID: {item.itemId}</p>
+                    <p className="text-xs text-slate-500">Auctioneer: {item.auctioneer?.auctioneerId || 'Unknown'}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
 
               {isBidder ? (
                 <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-                  <ItemGrid
-                    title="Your Feed"
-                    subtitle="For You"
-                    items={feedItems}
-                    selectedItemId={selectedItemId}
-                    emptyMessage="Your feed is empty right now. Start bidding and come back for more signal."
-                    onSelect={handleSelectItem}
+            <div className="grid gap-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2 text-sm text-slate">
+                  Search feed
+                  <input
+                    className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                    placeholder="Search by name"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
                   />
+                </label>
+                <label className="grid gap-2 text-sm text-slate">
+                  Max price
+                  <input
+                    className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                    placeholder="No max"
+                    type="number"
+                    min={0}
+                    value={maxPriceFilter}
+                    onChange={(event) =>
+                      setMaxPriceFilter(event.target.value === "" ? "" : Number(event.target.value))
+                    }
+                  />
+                </label>
+              </div>
+
+                    <ItemGrid
+                      title="Your Feed"
+                      subtitle="For You"
+                      items={filteredFeed}
+                      selectedItemId={selectedItemId}
+                      emptyMessage="Your feed is empty right now. Start bidding and come back for more signal."
+                      onSelect={handleSelectItem}
+                    />
+            </div>
 
                   <SectionCard title="Recommendations" subtitle="Because You Bid">
                     <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
