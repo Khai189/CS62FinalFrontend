@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ItemGrid } from "@/components/item-grid";
 import { SectionCard } from "@/components/section-card";
@@ -15,9 +14,9 @@ import type {
   Credentials,
   ItemCondition,
   ItemSearchFilters,
-  ListingDurationUnit,
   ListedItemResponse,
   ListItemPayload,
+  PlaceBidPayload,
   RegisterPayload
 } from "@/lib/types";
 
@@ -29,6 +28,14 @@ type CatalogFilterForm = {
   condition: "" | ItemCondition;
 };
 
+/**
+ * Merges two arrays of bid items, ensuring uniqueness based on itemId,
+ * and returns them sorted alphabetically by itemId.
+ *
+ * @param {BidItem[]} current - the current array of bid items
+ * @param {BidItem[]} incoming - the incoming array of new bid items
+ * @returns {BidItem[]} a merged and sorted array of bid items
+ */
 function mergeItems(current: BidItem[], incoming: BidItem[]) {
   const merged = new Map<string, BidItem>();
   for (const item of current) {
@@ -40,21 +47,26 @@ function mergeItems(current: BidItem[], incoming: BidItem[]) {
   return Array.from(merged.values()).sort((a, b) => a.itemId.localeCompare(b.itemId));
 }
 
+/**
+ * Extracts the raw message from an API response or falls back to a generic status message.
+ *
+ * @param {ApiResponse<unknown>} response - the API response object
+ * @returns {string} a summary message of the response
+ */
 function summarizeResponse(response: ApiResponse<unknown>) {
-  if (
-    response.data &&
-    typeof response.data === "object" &&
-    "message" in response.data &&
-    typeof response.data.message === "string"
-  ) {
-    return response.data.message;
-  }
   return response.raw || `Request finished with status ${response.status}.`;
 }
 
-function toKnownItem(payload: ListItemPayload, response: ListedItemResponse, user: AuthUser): BidItem {
+/**
+ * Converts a listing payload and authenticated user data into a standardized BidItem format.
+ *
+ * @param {ListItemPayload} payload - the payload containing the new listing details
+ * @param {AuthUser} user - the currently authenticated user posting the listing
+ * @returns {BidItem} a newly structured bid item mapping to the current user
+ */
+function toKnownItem(payload: ListItemPayload, user: AuthUser): BidItem {
   return {
-    itemId: response.itemId,
+    itemId: payload.itemId,
     itemName: payload.itemName,
     startingPrice: payload.startingPrice,
     description: payload.description || null,
@@ -67,6 +79,12 @@ function toKnownItem(payload: ListItemPayload, response: ListedItemResponse, use
   };
 }
 
+/**
+ * Parses a string into a number, returning undefined for empty or invalid numerical strings.
+ *
+ * @param {string} value - the string value to parse
+ * @returns {number | undefined} the parsed number, or undefined if the input is empty/invalid
+ */
 function parseNumber(value: string) {
   if (!value.trim()) {
     return undefined;
@@ -75,10 +93,14 @@ function parseNumber(value: string) {
   return Number.isNaN(parsed) ? undefined : parsed;
 }
 
+/**
+ * Renders the main dashboard for the 5CBid application.
+ *
+ * @returns {JSX.Element} the rendered Dashboard component
+ */
 export function Dashboard() {
   const { ready, currentUser, accessToken, saveSession, signOut, isBidder, isAuctioneer, activeBidderId } =
     useAuthSession();
-  const router = useRouter();
 
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [loginForm, setLoginForm] = useState<Credentials>({ username: "", password: "" });
@@ -107,6 +129,7 @@ export function Dashboard() {
   const [feedSearch, setFeedSearch] = useState("");
   const [totalRecs, setTotalRecs] = useState(4);
   const [itemPayload, setItemPayload] = useState<ListItemPayload>({
+    itemId: "",
     itemName: "",
     startingPrice: 0.5,
     description: "",
@@ -115,7 +138,6 @@ export function Dashboard() {
     durationUnit: "DAYS"
   });
   const [itemPriceInput, setItemPriceInput] = useState("");
-  const [listingDurationInput, setListingDurationInput] = useState("1");
   const [reloadKey, setReloadKey] = useState(0);
 
   const [loadingLabel, setLoadingLabel] = useState<string | null>(null);
@@ -163,24 +185,6 @@ export function Dashboard() {
     return null;
   }, [catalogFilterForm.maxPrice]);
 
-  const parsedDurationAmount = useMemo(() => {
-    if (!listingDurationInput.trim()) {
-      return undefined;
-    }
-    const parsed = Number(listingDurationInput);
-    return Number.isInteger(parsed) ? parsed : undefined;
-  }, [listingDurationInput]);
-
-  const listingDurationError = useMemo(() => {
-    if (!listingDurationInput.trim()) {
-      return "Listing duration must be 1 or greater";
-    }
-    if (parsedDurationAmount == null || parsedDurationAmount < 1) {
-      return "Listing duration must be 1 or greater";
-    }
-    return null;
-  }, [listingDurationInput, parsedDurationAmount]);
-
   function clearSessionState() {
     signOut();
     setCatalogItems([]);
@@ -189,7 +193,6 @@ export function Dashboard() {
     setRecommendedItems([]);
     setSelectedItemId("");
     setItemPriceInput("");
-    setListingDurationInput("1");
     setFeedSearch("");
     setCatalogFilterForm({
       query: "",
@@ -201,6 +204,12 @@ export function Dashboard() {
     setCatalogFilters({});
   }
 
+  /**
+   * Merges newly fetched items into the known items state and updates
+   * the currently selected item if none is currently selected.
+   *
+   * @param {BidItem[]} incoming - the new bid items to store in local state
+   */
   function rememberItems(incoming: BidItem[]) {
     setKnownItems((current) => {
       const merged = mergeItems(current, incoming);
@@ -211,6 +220,14 @@ export function Dashboard() {
     });
   }
 
+  /**
+   * Executes an asynchronous API action while managing loading labels and status notifications.
+   *
+   * @template T
+   * @param {string} label - a descriptive label for the loading statea
+   * @param {() => Promise<ApiResponse<T>>} work - the asynchronous API function to execute
+   * @param {(response: ApiResponse<T>) => void} [onSuccess] - optional callback triggered on a successful response
+   */
   async function runAction<T>(
     label: string,
     work: () => Promise<ApiResponse<T>>,
@@ -357,25 +374,20 @@ export function Dashboard() {
     });
   }, [feedItems, feedSearch]);
 
+  /**
+   * Updates the currently selected item ID based on the user's selection from an item grid.
+   *
+   * @param {BidItem} item - the selected bid item
+   */
   function handleSelectItem(item: BidItem) {
     setSelectedItemId(item.itemId);
-    if (isBidder) {
-      router.push(`/listings/${encodeURIComponent(item.itemId)}`);
-    }
   }
 
-  function listingOptionLabel(item: BidItem) {
-    const seller = item.auctioneer?.name ?? item.auctioneer?.auctioneerId ?? "Unknown seller";
-    return `${item.itemName || "Untitled listing"} · ${seller}`;
-  }
-
+  /**
+   * Applies the current catalog filter form values to the active catalog filters state,
+   * parsing numeric inputs as needed to trigger a new search.
+   */
   function applyCatalogFilters() {
-    if (maxPriceFilterError) {
-      setStatusTone("error");
-      setStatusMessage(maxPriceFilterError);
-      return;
-    }
-
     setCatalogFilters({
       query: catalogFilterForm.query.trim() || undefined,
       auctioneerId: catalogFilterForm.auctioneerId.trim() || undefined,
@@ -385,6 +397,9 @@ export function Dashboard() {
     });
   }
 
+  /**
+   * Resets all catalog filters and the filter form back to their default empty states.
+   */
   function clearCatalogFilters() {
     setCatalogFilterForm({
       query: "",
@@ -396,6 +411,9 @@ export function Dashboard() {
     setCatalogFilters({});
   }
 
+  /**
+   * Validates and submits a new listing to the marketplace API.
+   */
   function submitListing() {
     if (!accessToken) {
       setStatusTone("error");
@@ -420,21 +438,14 @@ export function Dashboard() {
     };
 
     void runAction("Posting listing", () => api.listItem(accessToken, payload), (response) => {
-      if (!response.ok || !currentUser || !response.data) {
+      if (!response.ok || !currentUser || !payload.itemId) {
         return;
       }
-      const item = toKnownItem(payload, response.data, currentUser);
+      const item = toKnownItem(payload, currentUser);
       setCatalogItems((current) => mergeItems(current, [item]));
       rememberItems([item]);
       setSelectedItemId(item.itemId);
-      setItemPayload({
-        itemName: "",
-        startingPrice: 0.5,
-        description: "",
-        condition: "NEW",
-        durationAmount: 1,
-        durationUnit: "DAYS"
-      });
+      setItemPayload({ itemName: "", startingPrice: 0.5, description: "", condition: "NEW" });
       setItemPriceInput("");
       setListingDurationInput("1");
       setReloadKey((current) => current + 1);
@@ -457,6 +468,14 @@ export function Dashboard() {
 
   return (
     <main className="px-4 py-8 md:px-8 md:py-10">
+      <datalist id="item-id-options">
+        {knownItems.map((item) => (
+          <option key={item.itemId} value={item.itemId}>
+            {item.itemName ?? item.itemId}
+          </option>
+        ))}
+      </datalist>
+
       <div className="mx-auto max-w-7xl">
         <div className="surface-panel relative mb-8 overflow-hidden p-8 md:p-10">
           <div className="absolute inset-y-0 right-0 hidden w-80 bg-[radial-gradient(circle_at_top,rgba(47,111,115,0.18),transparent_58%)] lg:block" />
@@ -677,7 +696,7 @@ export function Dashboard() {
                     Search listings
                     <input
                       className="field-input"
-                      placeholder="Name, seller, or description"
+                      placeholder="Name, item ID, seller, or description"
                       value={catalogFilterForm.query}
                       onChange={(event) =>
                         setCatalogFilterForm((current) => ({ ...current, query: event.target.value }))
@@ -715,8 +734,7 @@ export function Dashboard() {
                     <input
                       className="field-input"
                       type="number"
-                      min={0.5}
-                      step={0.01}
+                      min={0}
                       value={catalogFilterForm.maxPrice}
                       onChange={(event) =>
                         setCatalogFilterForm((current) => ({ ...current, maxPrice: event.target.value }))
@@ -742,9 +760,6 @@ export function Dashboard() {
                     </select>
                   </label>
                 </div>
-                {maxPriceFilterError ? (
-                  <p className="mt-3 text-sm font-medium text-red-600">{maxPriceFilterError}</p>
-                ) : null}
 
                 <div className="mt-5 flex flex-wrap gap-3">
                   <button type="button" className="primary-button button-ink" onClick={applyCatalogFilters}>
@@ -761,7 +776,6 @@ export function Dashboard() {
                 subtitle={hasCatalogFilters ? "Filtered Marketplace" : "Campus Marketplace"}
                 items={catalogItems}
                 selectedItemId={selectedItemId}
-                showBidStats
                 emptyMessage={
                   hasCatalogFilters
                     ? "No listings match those filters right now. Try widening your search."
@@ -778,7 +792,7 @@ export function Dashboard() {
                         Search your feed
                         <input
                           className="field-input"
-                          placeholder="Search by listing name, seller, or description"
+                          placeholder="Search by listing name, seller, or item ID"
                           value={feedSearch}
                           onChange={(event) => setFeedSearch(event.target.value)}
                         />
@@ -803,18 +817,12 @@ export function Dashboard() {
                     <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
                       <label className="field-label">
                         Start from this listing
-                        <select
+                        <input
                           className="field-input"
+                          list="item-id-options"
                           value={selectedItemId}
                           onChange={(event) => setSelectedItemId(event.target.value)}
-                        >
-                          <option value="">Choose a listing</option>
-                          {knownItems.map((item) => (
-                            <option key={item.itemId} value={item.itemId}>
-                              {listingOptionLabel(item)}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </label>
                       <label className="field-label">
                         Number of suggestions
@@ -844,7 +852,7 @@ export function Dashboard() {
 
               {isAuctioneer ? (
                 <SectionCard title="Post A Listing" subtitle="Seller Tools">
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <input
                       className="field-input"
                       placeholder="Listing title"
@@ -925,6 +933,67 @@ export function Dashboard() {
                   >
                     Post listing
                   </button>
+                </SectionCard>
+              ) : null}
+
+              {isBidder ? (
+                <SectionCard title="Place A Bid" subtitle="Buyer Tools">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <input
+                      className="field-input"
+                      list="item-id-options"
+                      placeholder="Listing ID"
+                      value={selectedItemId}
+                      onChange={(event) => setSelectedItemId(event.target.value)}
+                    />
+                    <input
+                      className="field-input"
+                      placeholder="Your bid"
+                      type="number"
+                      value={bidPayload.amount}
+                      onChange={(event) => setBidPayload({ amount: Number(event.target.value) })}
+                    />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      className="primary-button button-moss"
+                      onClick={() =>
+                        runAction("Placing bid", () => api.placeBid(accessToken, selectedItemId, bidPayload), () => {
+                          setReloadKey((current) => current + 1);
+                        })
+                      }
+                    >
+                      Place bid
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-button button-ink"
+                      onClick={() =>
+                        runAction("Checking top bid", () => api.getHighestBid(accessToken, selectedItemId), (response) => {
+                          setHighestBidText(response.raw);
+                        })
+                      }
+                    >
+                      View top bid
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-button button-ember"
+                      onClick={() =>
+                        runAction("Removing bid", () => api.removeBid(accessToken, selectedItemId), () => {
+                          setReloadKey((current) => current + 1);
+                        })
+                      }
+                    >
+                      Remove my bid
+                    </button>
+                  </div>
+                  {highestBidText ? (
+                    <p className="mt-4 rounded-3xl border border-[color:var(--line)] bg-white/70 px-4 py-3 text-sm text-slate">
+                      {highestBidText}
+                    </p>
+                  ) : null}
                 </SectionCard>
               ) : null}
             </>

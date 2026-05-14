@@ -1,7 +1,13 @@
 import { NextRequest } from "next/server";
 
 const allowedMethods = ["GET", "POST", "DELETE", "OPTIONS"];
-
+/**
+ * Proxies an incoming request to the configured backend API service.
+ * 
+ * @param request the incoming Next.js request object
+ * @param path an array of path segments representing the target backend endpoint
+ * @returns the response received from the backend service, or a 500 error if configuration is missing
+ */
 async function proxy(request: NextRequest, path: string[]) {
   const backendBaseUrl = process.env.BACKEND_API_BASE_URL;
   if (!backendBaseUrl) {
@@ -43,22 +49,47 @@ async function proxy(request: NextRequest, path: string[]) {
 
   return proxyResponse;
 }
-
+/**
+ * Handles HTTP GET requests by proxying them to the backend service.
+ * 
+ * @param request the incoming HTTP request
+ * @param context the route context
+ * @returns response from the proxied backend service
+ */
 export async function GET(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
   return proxy(request, path);
 }
 
+/**
+ * Handles HTTP POST requests by proxying them to the backend service.
+ * 
+ * @param request the incoming HTTP request
+ * @param context the route context
+ * @returns response from the proxied backend service
+ */
 export async function POST(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
   return proxy(request, path);
 }
 
+/**
+ * Handles HTTP DELETE requests by proxying them to the backend service.
+ * 
+ * @param request the incoming HTTP request
+ * @param context the route context
+ * @returns response from the proxied backend service
+ */
 export async function DELETE(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
   return proxy(request, path);
 }
 
+/**
+ * Handles HTTP OPTIONS requests for CORS preflight.
+ * 
+ * @returns a 204 No Content response indicating allowed methods
+ */
 export async function OPTIONS() {
   return new Response(null, {
     status: 204,

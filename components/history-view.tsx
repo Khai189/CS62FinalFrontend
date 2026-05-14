@@ -8,10 +8,23 @@ import { useAuthSession } from "@/lib/auth-session";
 import { api } from "@/lib/api";
 import type { BidHistorySummary } from "@/lib/types";
 
+/**
+ * Formats a historical item's condition string for display.
+ * 
+ * * @param {BidHistorySummary["condition"]} condition - the raw condition string
+ * @returns {string} the condition with underscores replaced by spaces, or a fallback string
+ */
 function conditionLabel(condition: BidHistorySummary["condition"]) {
   return condition ? condition.replaceAll("_", " ") : "Condition unavailable";
 }
 
+/**
+ * Checks if a specific history record matches the user's search query.
+ * 
+ * * @param {BidHistorySummary} item - the historical bid record to evaluate
+ * @param {string} query - the search query (expected to be lowercase)
+ * @returns {boolean} true if a match is found in the ID, name, description, seller, or bidder fields
+ */
 function historyMatchesSearch(item: BidHistorySummary, query: string) {
   const haystack = [
     item.itemId,
@@ -28,6 +41,12 @@ function historyMatchesSearch(item: BidHistorySummary, query: string) {
   return haystack.includes(query);
 }
 
+/**
+ * Converts a date string into a localized, readable format.
+ * 
+ * * @param {string | null} value - the date string to format
+ * @returns {string} the localized date and time, or "Unknown" if the input is invalid or null
+ */
 function formatDate(value: string | null) {
   if (!value) {
     return "Unknown";
@@ -36,6 +55,11 @@ function formatDate(value: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+/**
+ * Renders the user's personal history page for the marketplace.
+ * 
+ * * @returns {JSX.Element} the rendered HistoryView component
+ */
 export function HistoryView() {
   const { ready, currentUser, accessToken, isAuctioneer } = useAuthSession();
   const [items, setItems] = useState<BidHistorySummary[]>([]);

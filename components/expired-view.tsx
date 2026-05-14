@@ -8,10 +8,23 @@ import { useAuthSession } from "@/lib/auth-session";
 import { api } from "@/lib/api";
 import type { BidHistorySummary } from "@/lib/types";
 
+/**
+ * Formats a bid item's condition string for display in the bid history.
+ * 
+ * * @param {BidHistorySummary["condition"]} condition - the raw condition string from the bid history
+ * @returns {string} the condition with underscores replaced by spaces, or a fallback message if missing
+ */
 function conditionLabel(condition: BidHistorySummary["condition"]) {
   return condition ? condition.replaceAll("_", " ") : "Condition unavailable";
 }
 
+/**
+ * Evaluates whether an expired bid item matches a given search query.
+ * 
+ * * @param {BidHistorySummary} item - the historical bid summary object to evaluate
+ * @param {string} query - the search query string (expected to be lowercase)
+ * @returns {boolean} true if any searchable field (ID, name, description, seller, or winner) matches the query
+ */
 function expiredMatchesSearch(item: BidHistorySummary, query: string) {
   const haystack = [
     item.itemId,
@@ -28,6 +41,12 @@ function expiredMatchesSearch(item: BidHistorySummary, query: string) {
   return haystack.includes(query);
 }
 
+/**
+ * Formats an ISO date string into a localized, readable format.
+ * 
+ * * @param {string | null} value - the date string to format
+ * @returns {string} the localized date and time, "Unknown" if null, or the raw string if invalid
+ */
 function formatDate(value: string | null) {
   if (!value) {
     return "Unknown";
@@ -36,6 +55,12 @@ function formatDate(value: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+/**
+ * Generates a descriptive label for the final outcome of an auction.
+ * 
+ * * @param {BidHistorySummary} item - the bid history summary containing the final bidder and amount
+ * @returns {string} a string describing who won and for how much, or a "closed" message
+ */
 function outcomeLabel(item: BidHistorySummary) {
   if (item.highestBidderId && item.highestBidAmount != null) {
     return `Won by ${item.highestBidderId} for $${item.highestBidAmount}`;
@@ -43,6 +68,11 @@ function outcomeLabel(item: BidHistorySummary) {
   return "Closed without a winning bid";
 }
 
+/**
+ * Renders the view for browsing expired or closed auction listings.
+ * 
+ * * @returns {JSX.Element} the rendered ExpiredView component
+ */
 export function ExpiredView() {
   const { ready, currentUser, accessToken } = useAuthSession();
   const [items, setItems] = useState<BidHistorySummary[]>([]);

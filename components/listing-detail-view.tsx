@@ -10,10 +10,22 @@ import { useAuthSession } from "@/lib/auth-session";
 import { api } from "@/lib/api";
 import type { BidItem } from "@/lib/types";
 
+/**
+ * Formats a bid item's condition string for display.
+ * 
+ * * @param {BidItem["condition"]} condition - the raw condition string from the item
+ * @returns {string} the condition with underscores replaced by spaces, or a fallback string
+ */
 function conditionLabel(condition: BidItem["condition"]) {
   return condition ? condition.replaceAll("_", " ") : "Condition unavailable";
 }
 
+/**
+ * Parses a raw string from the highest bid API to extract the amount and bidder ID.
+ *
+ * * @param {string} raw - the raw string response from the backend
+ * @returns {Object} an object containing the parsed highestBidAmount and highestBidderId
+ */
 function parseHighestBid(raw: string) {
   const amountMatch = raw.match(/@\s*(\d+)/);
   const bidderMatch = raw.match(/:\s*(.+?)\s*@/);
@@ -62,6 +74,13 @@ type ListingDetailViewProps = {
   itemId: string;
 };
 
+/**
+ * Renders the detailed view for a single auction listing.
+ * 
+ * * @param {ListingDetailViewProps} props - the component props
+ * @param {string} props.itemId - the unique identifier for the listing to display
+ * @returns {JSX.Element} the rendered ListingDetailView component
+ */
 export function ListingDetailView({ itemId }: ListingDetailViewProps) {
   const router = useRouter();
   const { ready, currentUser, accessToken, isBidder } = useAuthSession();
@@ -168,6 +187,12 @@ export function ListingDetailView({ itemId }: ListingDetailViewProps) {
     setBidAmount(minimumBid);
   }, [minimumBid]);
 
+  /**
+   * Clamps and updates the current bid input amount based on the calculated 
+   * minimum and maximum bounds for the listing.
+   * 
+   * * @param {number} nextValue - the intended bid amount from the input
+   */
   function updateBidAmount(nextValue: number) {
     if (Number.isNaN(nextValue)) {
       return;
@@ -176,6 +201,11 @@ export function ListingDetailView({ itemId }: ListingDetailViewProps) {
     setBidAmount(clamped);
   }
 
+  /**
+   * Submits the current bid amount to the backend API.
+   * * Validates the user's role, handles the loading state, and provides 
+   * visual feedback via toasts and status banners on success or failure.
+   */
   async function placeBid() {
     if (!accessToken || !isBidder) {
       setStatusTone("error");

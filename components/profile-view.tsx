@@ -5,6 +5,11 @@ import { SectionCard } from "@/components/section-card";
 import { StatusBanner } from "@/components/status-banner";
 import { useAuthSession } from "@/lib/auth-session";
 
+/**
+ * Renders the authenticated user's profile information.
+ * 
+ * @returns {JSX.Element} the rendered ProfileView component
+ */
 export function ProfileView() {
   const { ready, currentUser, signOut } = useAuthSession();
 

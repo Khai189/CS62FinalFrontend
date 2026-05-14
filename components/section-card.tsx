@@ -6,6 +6,15 @@ type SectionCardProps = {
   children: ReactNode;
 };
 
+/**
+ * A layout component that wraps content in a stylized section panel.
+ * 
+ * * @param {SectionCardProps} props - the component props
+ * @param {string} props.title - the primary heading for the section
+ * @param {string} props.subtitle - secondary text displayed above the title for context
+ * @param {ReactNode} props.children - the content to be rendered within the card body
+ * @returns {JSX.Element} the rendered SectionCard component
+ */
 export function SectionCard({ title, subtitle, children }: SectionCardProps) {
   return (
     <section className="surface-panel p-6 md:p-8">
