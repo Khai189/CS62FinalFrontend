@@ -89,31 +89,36 @@ Example:
 await api.getMe(token);
 ```
 
-### `api.getAllItems(accessToken)`
+### `api.getAllItems(accessToken, filters)`
 
-- Input: JWT access token
+- Input: JWT access token and optional `ItemSearchFilters`
 - Output: `Promise<ApiResponse<BidItem[]>>`
-- Description: Loads all active marketplace listings.
+- Description: Loads active marketplace listings and can filter by search text, seller, min/max opening bid, and condition.
 
 Example:
 
 ```ts
-await api.getAllItems(token);
+await api.getAllItems(token, {
+  query: "lamp",
+  maxPrice: 25,
+  condition: "USED"
+});
 ```
 
 ### `api.listItem(accessToken, payload)`
 
 - Input: JWT access token and `ListItemPayload`
-- Output: `Promise<ApiResponse<string>>`
-- Description: Posts a new listing as a seller.
+- Output: `Promise<ApiResponse<ListedItemResponse>>`
+- Description: Posts a new listing as a seller and returns the generated listing ID from the backend.
 
 Example:
 
 ```ts
 await api.listItem(token, {
-  itemId: "lamp-101",
   itemName: "Desk Lamp",
-  startingPrice: 15
+  startingPrice: 15,
+  description: "Warm light for a dorm desk.",
+  condition: "USED"
 });
 ```
 
@@ -175,6 +180,42 @@ Example:
 
 ```ts
 await api.getFeed(token, "maya123");
+```
+
+### `api.getActiveBids(accessToken)`
+
+- Input: JWT access token
+- Output: `Promise<ApiResponse<ActiveBidSummary[]>>`
+- Description: Loads the current live bidding activity for the signed-in user.
+
+Example:
+
+```ts
+await api.getActiveBids(token);
+```
+
+### `api.getBidHistory(accessToken)`
+
+- Input: JWT access token
+- Output: `Promise<ApiResponse<BidHistorySummary[]>>`
+- Description: Loads the signed-in user's past bid history or auction history.
+
+Example:
+
+```ts
+await api.getBidHistory(token);
+```
+
+### `api.getExpiredBids(accessToken)`
+
+- Input: JWT access token
+- Output: `Promise<ApiResponse<BidHistorySummary[]>>`
+- Description: Loads expired listing outcomes, including winners and closing prices.
+
+Example:
+
+```ts
+await api.getExpiredBids(token);
 ```
 
 ## Public Components And Constructors

@@ -14,6 +14,7 @@ import type {
   Credentials,
   ItemCondition,
   ItemSearchFilters,
+  ListedItemResponse,
   ListItemPayload,
   PlaceBidPayload,
   RegisterPayload
@@ -39,12 +40,20 @@ function mergeItems(current: BidItem[], incoming: BidItem[]) {
 }
 
 function summarizeResponse(response: ApiResponse<unknown>) {
+  if (
+    response.data &&
+    typeof response.data === "object" &&
+    "message" in response.data &&
+    typeof response.data.message === "string"
+  ) {
+    return response.data.message;
+  }
   return response.raw || `Request finished with status ${response.status}.`;
 }
 
-function toKnownItem(payload: ListItemPayload, user: AuthUser): BidItem {
+function toKnownItem(payload: ListItemPayload, response: ListedItemResponse, user: AuthUser): BidItem {
   return {
-    itemId: payload.itemId,
+    itemId: response.itemId,
     itemName: payload.itemName,
     startingPrice: payload.startingPrice,
     description: payload.description || null,
@@ -95,7 +104,6 @@ export function Dashboard() {
   const [feedSearch, setFeedSearch] = useState("");
   const [totalRecs, setTotalRecs] = useState(4);
   const [itemPayload, setItemPayload] = useState<ListItemPayload>({
-    itemId: "",
     itemName: "",
     startingPrice: 0.5,
     description: "",
@@ -139,6 +147,17 @@ export function Dashboard() {
     }
     return null;
   }, [itemPriceInput, parsedListingPrice]);
+
+  const maxPriceFilterError = useMemo(() => {
+    if (!catalogFilterForm.maxPrice.trim()) {
+      return null;
+    }
+    const parsed = parseNumber(catalogFilterForm.maxPrice);
+    if (parsed == null || parsed < 0.5) {
+      return "Maximum opening bid must be at least 50 cents";
+    }
+    return null;
+  }, [catalogFilterForm.maxPrice]);
 
   function clearSessionState() {
     signOut();
@@ -321,6 +340,12 @@ export function Dashboard() {
   }
 
   function applyCatalogFilters() {
+    if (maxPriceFilterError) {
+      setStatusTone("error");
+      setStatusMessage(maxPriceFilterError);
+      return;
+    }
+
     setCatalogFilters({
       query: catalogFilterForm.query.trim() || undefined,
       auctioneerId: catalogFilterForm.auctioneerId.trim() || undefined,
@@ -359,14 +384,14 @@ export function Dashboard() {
     };
 
     void runAction("Posting listing", () => api.listItem(accessToken, payload), (response) => {
-      if (!response.ok || !currentUser || !payload.itemId) {
+      if (!response.ok || !currentUser || !response.data) {
         return;
       }
-      const item = toKnownItem(payload, currentUser);
+      const item = toKnownItem(payload, response.data, currentUser);
       setCatalogItems((current) => mergeItems(current, [item]));
       rememberItems([item]);
       setSelectedItemId(item.itemId);
-      setItemPayload({ itemId: "", itemName: "", startingPrice: 0.5, description: "", condition: "NEW" });
+      setItemPayload({ itemName: "", startingPrice: 0.5, description: "", condition: "NEW" });
       setItemPriceInput("");
       setReloadKey((current) => current + 1);
     });
@@ -654,7 +679,8 @@ export function Dashboard() {
                     <input
                       className="field-input"
                       type="number"
-                      min={0}
+                      min={0.5}
+                      step={0.01}
                       value={catalogFilterForm.maxPrice}
                       onChange={(event) =>
                         setCatalogFilterForm((current) => ({ ...current, maxPrice: event.target.value }))
@@ -680,6 +706,9 @@ export function Dashboard() {
                     </select>
                   </label>
                 </div>
+                {maxPriceFilterError ? (
+                  <p className="mt-3 text-sm font-medium text-red-600">{maxPriceFilterError}</p>
+                ) : null}
 
                 <div className="mt-5 flex flex-wrap gap-3">
                   <button type="button" className="primary-button button-ink" onClick={applyCatalogFilters}>
@@ -772,15 +801,10 @@ export function Dashboard() {
 
               {isAuctioneer ? (
                 <SectionCard title="Post A Listing" subtitle="Seller Tools">
+                  <p className="mb-4 text-sm leading-6 text-slate">
+                    Listing IDs are generated automatically when you post, so buyers always get a clean marketplace link.
+                  </p>
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <input
-                      className="field-input"
-                      placeholder="Listing ID"
-                      value={itemPayload.itemId}
-                      onChange={(event) =>
-                        setItemPayload((current) => ({ ...current, itemId: event.target.value }))
-                      }
-                    />
                     <input
                       className="field-input"
                       placeholder="Listing title"

@@ -7,6 +7,7 @@ import type {
   BidItem,
   Credentials,
   ItemSearchFilters,
+  ListedItemResponse,
   ListItemPayload,
   PlaceBidPayload,
   RegisterPayload
@@ -85,7 +86,7 @@ export const api = {
   },
 
   listItem(accessToken: string, payload: ListItemPayload) {
-    return request<string>(
+    return request<ListedItemResponse>(
       "/bid/list",
       {
         method: "POST",
@@ -120,6 +121,10 @@ export const api = {
 
   getBidHistory(accessToken: string) {
     return request<BidHistorySummary[]>("/bid/history", { method: "GET" }, accessToken);
+  },
+
+  getExpiredBids(accessToken: string) {
+    return request<BidHistorySummary[]>("/bid/expired", { method: "GET" }, accessToken);
   },
 
   getRecommendations(accessToken: string, bidderId: string, itemId: string, totalRecs: number) {

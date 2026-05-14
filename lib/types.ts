@@ -39,11 +39,18 @@ export type BidItem = {
 };
 
 export type ListItemPayload = {
-  itemId: string;
   itemName: string;
   startingPrice: number;
   description: string;
   condition: ItemCondition;
+};
+
+export type ListedItemResponse = {
+  itemId: string;
+  itemName: string | null;
+  auctioneerId: string | null;
+  auctioneerName: string | null;
+  message: string;
 };
 
 export type PlaceBidPayload = {

@@ -36,6 +36,9 @@ export function SiteNav() {
           <Link href="/history" className={navClasses(pathname === "/history")}>
             History
           </Link>
+          <Link href="/expired" className={navClasses(pathname === "/expired")}>
+            Expired
+          </Link>
           <Link href="/profile" className={navClasses(pathname === "/profile")}>
             Profile
           </Link>
