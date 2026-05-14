@@ -37,6 +37,7 @@ Main frontend libraries:
 - React
 - Tailwind CSS
 - TypeScript
+- React Toastify
 
 Install them with:
 
@@ -97,7 +98,7 @@ await api.getMe(token);
 
 - Input: JWT access token and optional `ItemSearchFilters`
 - Output: `Promise<ApiResponse<BidItem[]>>`
-- Description: Loads active marketplace listings and can filter by search text, seller, min/max opening bid, and condition.
+- Description: Loads active marketplace listings and can filter by search text, seller, min/max opening bid, and condition. Each listing includes current highest bid, current highest bidder, active bid count, and expiration time.
 
 Example:
 
@@ -113,7 +114,7 @@ await api.getAllItems(token, {
 
 - Input: JWT access token and `ListItemPayload`
 - Output: `Promise<ApiResponse<ListedItemResponse>>`
-- Description: Posts a new listing as a seller and returns the generated listing ID from the backend.
+- Description: Posts a new listing as a seller and returns the generated listing ID plus the backend expiration timestamp.
 
 Example:
 
@@ -122,7 +123,9 @@ await api.listItem(token, {
   itemName: "Desk Lamp",
   startingPrice: 15,
   description: "Warm light for a dorm desk.",
-  condition: "USED"
+  condition: "USED",
+  durationAmount: 3,
+  durationUnit: "DAYS"
 });
 ```
 
@@ -142,7 +145,7 @@ await api.placeBid(token, "lamp-101", { amount: 22 });
 
 - Input: JWT access token and item ID
 - Output: `Promise<ApiResponse<string>>`
-- Description: Loads the current top bid for one listing.
+- Description: Loads the current top bid summary string for one listing. The listing detail page then parses this into bidder and amount values for display.
 
 Example:
 
@@ -231,7 +234,7 @@ React components are used as the main public UI building blocks.
 - File: `components/dashboard.tsx`
 - Inputs: none directly; it manages local session and marketplace state
 - Output: rendered marketplace page
-- Description: main top-level screen for auth, listings, bids, seller tools, and recommendations
+- Description: main top-level screen for auth, listings, live countdown cards, seller tools, filters, and recommendations
 
 Usage example:
 
@@ -248,8 +251,9 @@ Usage example:
   - `items`
   - `emptyMessage`
   - optional `selectedItemId`
+  - optional `showBidStats`
   - optional `onSelect`
-- Output: rendered list/grid of listing cards
+- Output: rendered list/grid of listing cards with live countdowns, and optionally bid stats
 
 Usage example:
 
@@ -258,8 +262,22 @@ Usage example:
   title="Open Listings"
   subtitle="Campus Marketplace"
   items={items}
+  showBidStats
   emptyMessage="No items yet."
 />
+```
+
+### `ListingDetailView(props)`
+
+- File: `components/listing-detail-view.tsx`
+- Inputs: `itemId`
+- Output: rendered item detail page for one listing
+- Description: shows the current top bid, top bidder, active bid count, countdown timer, and constrained bid-entry form for one listing
+
+Usage example:
+
+```tsx
+<ListingDetailView itemId="desk-lamp-a1b2c3d4" />
 ```
 
 ### `SectionCard(props)`

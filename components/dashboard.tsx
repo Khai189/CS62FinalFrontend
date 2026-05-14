@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ItemGrid } from "@/components/item-grid";
 import { SectionCard } from "@/components/section-card";
@@ -14,9 +15,9 @@ import type {
   Credentials,
   ItemCondition,
   ItemSearchFilters,
+  ListingDurationUnit,
   ListedItemResponse,
   ListItemPayload,
-  PlaceBidPayload,
   RegisterPayload
 } from "@/lib/types";
 
@@ -61,12 +62,13 @@ function summarizeResponse(response: ApiResponse<unknown>) {
  * Converts a listing payload and authenticated user data into a standardized BidItem format.
  *
  * @param {ListItemPayload} payload - the payload containing the new listing details
+ * @param {ListedItemResponse} response - the backend response containing the generated listing ID
  * @param {AuthUser} user - the currently authenticated user posting the listing
  * @returns {BidItem} a newly structured bid item mapping to the current user
  */
-function toKnownItem(payload: ListItemPayload, user: AuthUser): BidItem {
+function toKnownItem(payload: ListItemPayload, response: ListedItemResponse, user: AuthUser): BidItem {
   return {
-    itemId: payload.itemId,
+    itemId: response.itemId,
     itemName: payload.itemName,
     startingPrice: payload.startingPrice,
     description: payload.description || null,
@@ -101,6 +103,7 @@ function parseNumber(value: string) {
 export function Dashboard() {
   const { ready, currentUser, accessToken, saveSession, signOut, isBidder, isAuctioneer, activeBidderId } =
     useAuthSession();
+  const router = useRouter();
 
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [loginForm, setLoginForm] = useState<Credentials>({ username: "", password: "" });
@@ -129,7 +132,6 @@ export function Dashboard() {
   const [feedSearch, setFeedSearch] = useState("");
   const [totalRecs, setTotalRecs] = useState(4);
   const [itemPayload, setItemPayload] = useState<ListItemPayload>({
-    itemId: "",
     itemName: "",
     startingPrice: 0.5,
     description: "",
@@ -138,6 +140,7 @@ export function Dashboard() {
     durationUnit: "DAYS"
   });
   const [itemPriceInput, setItemPriceInput] = useState("");
+  const [listingDurationInput, setListingDurationInput] = useState("1");
   const [reloadKey, setReloadKey] = useState(0);
 
   const [loadingLabel, setLoadingLabel] = useState<string | null>(null);
@@ -185,6 +188,24 @@ export function Dashboard() {
     return null;
   }, [catalogFilterForm.maxPrice]);
 
+  const parsedDurationAmount = useMemo(() => {
+    if (!listingDurationInput.trim()) {
+      return undefined;
+    }
+    const parsed = Number(listingDurationInput);
+    return Number.isInteger(parsed) ? parsed : undefined;
+  }, [listingDurationInput]);
+
+  const listingDurationError = useMemo(() => {
+    if (!listingDurationInput.trim()) {
+      return "Listing duration must be 1 or greater";
+    }
+    if (parsedDurationAmount == null || parsedDurationAmount < 1) {
+      return "Listing duration must be 1 or greater";
+    }
+    return null;
+  }, [listingDurationInput, parsedDurationAmount]);
+
   function clearSessionState() {
     signOut();
     setCatalogItems([]);
@@ -193,6 +214,7 @@ export function Dashboard() {
     setRecommendedItems([]);
     setSelectedItemId("");
     setItemPriceInput("");
+    setListingDurationInput("1");
     setFeedSearch("");
     setCatalogFilterForm({
       query: "",
@@ -381,6 +403,9 @@ export function Dashboard() {
    */
   function handleSelectItem(item: BidItem) {
     setSelectedItemId(item.itemId);
+    if (isBidder) {
+      router.push(`/listings/${encodeURIComponent(item.itemId)}`);
+    }
   }
 
   /**
@@ -438,14 +463,21 @@ export function Dashboard() {
     };
 
     void runAction("Posting listing", () => api.listItem(accessToken, payload), (response) => {
-      if (!response.ok || !currentUser || !payload.itemId) {
+      if (!response.ok || !currentUser || !response.data) {
         return;
       }
-      const item = toKnownItem(payload, currentUser);
+      const item = toKnownItem(payload, response.data, currentUser);
       setCatalogItems((current) => mergeItems(current, [item]));
       rememberItems([item]);
       setSelectedItemId(item.itemId);
-      setItemPayload({ itemName: "", startingPrice: 0.5, description: "", condition: "NEW" });
+      setItemPayload({
+        itemName: "",
+        startingPrice: 0.5,
+        description: "",
+        condition: "NEW",
+        durationAmount: 1,
+        durationUnit: "DAYS"
+      });
       setItemPriceInput("");
       setListingDurationInput("1");
       setReloadKey((current) => current + 1);
@@ -468,14 +500,6 @@ export function Dashboard() {
 
   return (
     <main className="px-4 py-8 md:px-8 md:py-10">
-      <datalist id="item-id-options">
-        {knownItems.map((item) => (
-          <option key={item.itemId} value={item.itemId}>
-            {item.itemName ?? item.itemId}
-          </option>
-        ))}
-      </datalist>
-
       <div className="mx-auto max-w-7xl">
         <div className="surface-panel relative mb-8 overflow-hidden p-8 md:p-10">
           <div className="absolute inset-y-0 right-0 hidden w-80 bg-[radial-gradient(circle_at_top,rgba(47,111,115,0.18),transparent_58%)] lg:block" />
@@ -936,66 +960,6 @@ export function Dashboard() {
                 </SectionCard>
               ) : null}
 
-              {isBidder ? (
-                <SectionCard title="Place A Bid" subtitle="Buyer Tools">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <input
-                      className="field-input"
-                      list="item-id-options"
-                      placeholder="Listing ID"
-                      value={selectedItemId}
-                      onChange={(event) => setSelectedItemId(event.target.value)}
-                    />
-                    <input
-                      className="field-input"
-                      placeholder="Your bid"
-                      type="number"
-                      value={bidPayload.amount}
-                      onChange={(event) => setBidPayload({ amount: Number(event.target.value) })}
-                    />
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      className="primary-button button-moss"
-                      onClick={() =>
-                        runAction("Placing bid", () => api.placeBid(accessToken, selectedItemId, bidPayload), () => {
-                          setReloadKey((current) => current + 1);
-                        })
-                      }
-                    >
-                      Place bid
-                    </button>
-                    <button
-                      type="button"
-                      className="primary-button button-ink"
-                      onClick={() =>
-                        runAction("Checking top bid", () => api.getHighestBid(accessToken, selectedItemId), (response) => {
-                          setHighestBidText(response.raw);
-                        })
-                      }
-                    >
-                      View top bid
-                    </button>
-                    <button
-                      type="button"
-                      className="primary-button button-ember"
-                      onClick={() =>
-                        runAction("Removing bid", () => api.removeBid(accessToken, selectedItemId), () => {
-                          setReloadKey((current) => current + 1);
-                        })
-                      }
-                    >
-                      Remove my bid
-                    </button>
-                  </div>
-                  {highestBidText ? (
-                    <p className="mt-4 rounded-3xl border border-[color:var(--line)] bg-white/70 px-4 py-3 text-sm text-slate">
-                      {highestBidText}
-                    </p>
-                  ) : null}
-                </SectionCard>
-              ) : null}
             </>
           )}
         </div>
