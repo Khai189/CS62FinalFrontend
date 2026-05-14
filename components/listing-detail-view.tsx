@@ -155,10 +155,10 @@ export function ListingDetailView({ itemId }: ListingDetailViewProps) {
       const response = await api.placeBid(token, itemId, { amount: bidAmount });
       if (response.ok) {
         setStatusTone("success");
-        setStatusMessage(response.raw || "Your bid was placed.");
+        setStatusMessage(`Bid at $${bidAmount} successful!`);
         setHighestBidAmount(bidAmount);
         setHighestBidderId(user?.profileId ?? user?.username ?? null);
-        toast.success(`Bid placed for $${bidAmount}.`);
+        toast.success(`Bid at $${bidAmount} successful!`);
       } else {
         setStatusTone("error");
         setStatusMessage(response.raw || "We could not place your bid.");
