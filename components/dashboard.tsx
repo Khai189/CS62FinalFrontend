@@ -290,20 +290,31 @@ export function Dashboard() {
       </datalist>
 
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 overflow-hidden rounded-[2.5rem] border border-white/60 bg-[linear-gradient(135deg,rgba(255,255,255,0.72),rgba(255,245,228,0.84))] p-8 shadow-card">
-          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-ember">5CBid</p>
+        <div className="surface-panel relative mb-8 overflow-hidden p-8 md:p-10">
+          <div className="absolute inset-y-0 right-0 hidden w-80 bg-[radial-gradient(circle_at_top,rgba(47,111,115,0.18),transparent_58%)] lg:block" />
+          <p className="section-eyebrow text-ember">5CBid</p>
           <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <h1 className="text-4xl text-ink md:text-6xl">A bidding site with JWT auth, seller tools, and recommendations</h1>
+              <h1 className="max-w-4xl text-4xl text-ink md:text-6xl">
+                Bid, sell, and discover the next item worth chasing.
+              </h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate md:text-lg">
                 Sign up as a bidder or auctioneer, browse live marketplace items, place bids,
                 list products for sale, and get recommendation results from the Spring backend at {backendDisplayUrl}.
               </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <span className="hero-chip">JWT auth</span>
+                <span className="hero-chip">Live marketplace</span>
+                <span className="hero-chip">Recommendation feed</span>
+              </div>
             </div>
-            <div className="rounded-3xl border border-white/70 bg-white/70 px-5 py-4 text-sm text-slate">
-              <p>Session: {authSummary}</p>
-              <p>User: {currentUser ? `${currentUser.displayName} (${currentUser.role})` : "Guest"}</p>
-              <p>{loadingLabel ? `Working: ${loadingLabel}` : "Ready"}</p>
+            <div className="glass-tile max-w-sm px-5 py-4 text-sm text-slate">
+              <p className="section-eyebrow mb-3">Session</p>
+              <div className="grid gap-2">
+                <p>Token: {authSummary}</p>
+                <p>User: {currentUser ? `${currentUser.displayName} (${currentUser.role})` : "Guest"}</p>
+                <p>{loadingLabel ? `Working: ${loadingLabel}` : "Ready"}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -316,8 +327,8 @@ export function Dashboard() {
               <div className="mb-5 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                    authMode === "login" ? "bg-ink text-white" : "bg-white/80 text-slate"
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    authMode === "login" ? "bg-ink text-white shadow-sm" : "bg-white/80 text-slate"
                   }`}
                   onClick={() => setAuthMode("login")}
                 >
@@ -325,8 +336,8 @@ export function Dashboard() {
                 </button>
                 <button
                   type="button"
-                  className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                    authMode === "signup" ? "bg-tide text-white" : "bg-white/80 text-slate"
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    authMode === "signup" ? "bg-tide text-white shadow-sm" : "bg-white/80 text-slate"
                   }`}
                   onClick={() => setAuthMode("signup")}
                 >
@@ -336,20 +347,20 @@ export function Dashboard() {
 
               {authMode === "login" ? (
                 <div className="grid gap-4 md:max-w-xl">
-                  <label className="grid gap-2 text-sm text-slate">
+                  <label className="field-label">
                     Username
                     <input
-                      className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                      className="field-input"
                       value={loginForm.username}
                       onChange={(event) =>
                         setLoginForm((current) => ({ ...current, username: event.target.value }))
                       }
                     />
                   </label>
-                  <label className="grid gap-2 text-sm text-slate">
+                  <label className="field-label">
                     Password
                     <input
-                      className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                      className="field-input"
                       type="password"
                       value={loginForm.password}
                       onChange={(event) =>
@@ -359,7 +370,7 @@ export function Dashboard() {
                   </label>
                   <button
                     type="button"
-                    className="w-fit rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white"
+                    className="primary-button button-ink w-fit"
                     onClick={() =>
                       runAction("Log in", () => api.login(loginForm), (response) => {
                         if (!response.data) {
@@ -376,20 +387,20 @@ export function Dashboard() {
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
-                  <label className="grid gap-2 text-sm text-slate">
+                  <label className="field-label">
                     Username
                     <input
-                      className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                      className="field-input"
                       value={signupForm.username}
                       onChange={(event) =>
                         setSignupForm((current) => ({ ...current, username: event.target.value }))
                       }
                     />
                   </label>
-                  <label className="grid gap-2 text-sm text-slate">
+                  <label className="field-label">
                     Email
                     <input
-                      className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                      className="field-input"
                       type="email"
                       value={signupForm.email}
                       onChange={(event) =>
@@ -397,10 +408,10 @@ export function Dashboard() {
                       }
                     />
                   </label>
-                  <label className="grid gap-2 text-sm text-slate">
+                  <label className="field-label">
                     Password
                     <input
-                      className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                      className="field-input"
                       type="password"
                       value={signupForm.password}
                       onChange={(event) =>
@@ -408,20 +419,20 @@ export function Dashboard() {
                       }
                     />
                   </label>
-                  <label className="grid gap-2 text-sm text-slate">
+                  <label className="field-label">
                     Display name
                     <input
-                      className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                      className="field-input"
                       value={signupForm.displayName}
                       onChange={(event) =>
                         setSignupForm((current) => ({ ...current, displayName: event.target.value }))
                       }
                     />
                   </label>
-                  <label className="grid gap-2 text-sm text-slate">
+                  <label className="field-label">
                     Account type
                     <select
-                      className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                      className="field-input"
                       value={signupForm.role}
                       onChange={(event) =>
                         setSignupForm((current) => ({
@@ -437,7 +448,7 @@ export function Dashboard() {
                   <div className="md:col-span-2">
                     <button
                       type="button"
-                      className="w-fit rounded-full bg-tide px-5 py-2 text-sm font-semibold text-white"
+                      className="primary-button button-tide w-fit"
                       onClick={() =>
                         runAction("Create account", () => api.register(signupForm), (response) => {
                           if (!response.data) {
@@ -472,7 +483,7 @@ export function Dashboard() {
                   </div>
                   <button
                     type="button"
-                    className="w-fit rounded-full bg-ember px-5 py-2 text-sm font-semibold text-white"
+                    className="primary-button button-ember w-fit"
                     onClick={() => {
                       clearSession();
                       setStatusTone("neutral");
@@ -506,19 +517,19 @@ export function Dashboard() {
 
                   <SectionCard title="Recommendations" subtitle="Because You Bid">
                     <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-                      <label className="grid gap-2 text-sm text-slate">
+                      <label className="field-label">
                         Anchor item ID
                         <input
-                          className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                          className="field-input"
                           list="item-id-options"
                           value={selectedItemId}
                           onChange={(event) => setSelectedItemId(event.target.value)}
                         />
                       </label>
-                      <label className="grid gap-2 text-sm text-slate">
+                      <label className="field-label">
                         Total recs
                         <input
-                          className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                          className="field-input"
                           type="number"
                           min={1}
                           value={totalRecs}
@@ -554,7 +565,7 @@ export function Dashboard() {
                     <>
                       <div className="grid gap-3">
                         <input
-                          className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                          className="field-input"
                           placeholder="Item ID"
                           value={itemPayload.itemId}
                           onChange={(event) =>
@@ -562,7 +573,7 @@ export function Dashboard() {
                           }
                         />
                         <input
-                          className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                          className="field-input"
                           placeholder="Item name"
                           value={itemPayload.itemName}
                           onChange={(event) =>
@@ -570,7 +581,7 @@ export function Dashboard() {
                           }
                         />
                         <input
-                          className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                          className="field-input"
                           placeholder="Starting price"
                           type="number"
                           value={itemPayload.startingPrice}
@@ -584,7 +595,7 @@ export function Dashboard() {
                       </div>
                       <button
                         type="button"
-                        className="mt-4 rounded-full bg-tide px-4 py-2 text-sm font-semibold text-white"
+                        className="primary-button button-tide mt-4"
                         onClick={() =>
                           runAction("List item", () => api.listItem(accessToken, itemPayload), (response) => {
                             if (!response.ok || !currentUser || !itemPayload.itemId) {
@@ -614,14 +625,14 @@ export function Dashboard() {
                     <>
                       <div className="grid gap-3">
                         <input
-                          className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                          className="field-input"
                           list="item-id-options"
                           placeholder="Item ID"
                           value={selectedItemId}
                           onChange={(event) => setSelectedItemId(event.target.value)}
                         />
                         <input
-                          className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
+                          className="field-input"
                           placeholder="Bid amount"
                           type="number"
                           value={bidPayload.amount}
@@ -633,7 +644,7 @@ export function Dashboard() {
                       <div className="mt-4 flex flex-wrap gap-3">
                         <button
                           type="button"
-                          className="rounded-full bg-moss px-4 py-2 text-sm font-semibold text-white"
+                          className="primary-button button-moss"
                           onClick={() =>
                             runAction("Place bid", () => api.placeBid(accessToken, selectedItemId, bidPayload), () => {
                               setReloadKey((current) => current + 1);
@@ -644,7 +655,7 @@ export function Dashboard() {
                         </button>
                         <button
                           type="button"
-                          className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white"
+                          className="primary-button button-ink"
                           onClick={() =>
                             runAction("Check highest bid", () => api.getHighestBid(accessToken, selectedItemId), (response) => {
                               setHighestBidText(response.raw);
@@ -655,7 +666,7 @@ export function Dashboard() {
                         </button>
                         <button
                           type="button"
-                          className="rounded-full bg-ember px-4 py-2 text-sm font-semibold text-white"
+                          className="primary-button button-ember"
                           onClick={() =>
                             runAction("Remove bid", () => api.removeBid(accessToken, selectedItemId), () => {
                               setReloadKey((current) => current + 1);

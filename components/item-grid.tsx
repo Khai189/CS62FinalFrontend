@@ -18,17 +18,17 @@ export function ItemGrid({
   onSelect
 }: ItemGridProps) {
   return (
-    <div className="rounded-4xl border border-white/60 bg-[rgba(255,252,247,0.86)] p-6 shadow-card backdrop-blur">
+    <div className="surface-panel p-6">
       <div className="mb-4 flex items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate">{subtitle}</p>
+          <p className="section-eyebrow">{subtitle}</p>
           <h2 className="mt-2 text-2xl text-ink">{title}</h2>
         </div>
-        <p className="text-sm text-slate">{items.length} item{items.length === 1 ? "" : "s"}</p>
+        <p className="hero-chip">{items.length} item{items.length === 1 ? "" : "s"}</p>
       </div>
 
       {items.length === 0 ? (
-        <p className="rounded-3xl border border-dashed border-[color:var(--line)] bg-white/50 p-5 text-sm text-slate">
+        <p className="rounded-[1.6rem] border border-dashed border-[color:var(--line-strong)] bg-white/55 p-5 text-sm leading-6 text-slate">
           {emptyMessage}
         </p>
       ) : (
@@ -41,27 +41,33 @@ export function ItemGrid({
                 key={item.itemId}
                 type="button"
                 onClick={() => onSelect?.(item)}
-                className={`rounded-3xl border p-5 text-left transition ${
+                className={`rounded-[1.6rem] border p-5 text-left transition duration-200 ${
                   isSelected
-                    ? "border-tide bg-tide/10 shadow-sm"
-                    : "border-[color:var(--line)] bg-white/70 hover:-translate-y-0.5"
+                    ? "border-tide bg-gradient-to-br from-tide/10 to-white shadow-[0_18px_30px_rgba(47,111,115,0.14)]"
+                    : "border-[color:var(--line)] bg-white/72 hover:-translate-y-1 hover:border-tide/25"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-lg text-ink">{item.itemName || item.itemId}</h3>
-                    <p className="mt-1 text-sm text-slate">{item.itemId}</p>
+                    <h3 className="text-xl text-ink">{item.itemName || item.itemId}</h3>
+                    <p className="mt-1 text-sm text-slate/90">{item.itemId}</p>
                   </div>
                   {isSelected ? (
-                    <span className="rounded-full bg-tide px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white">
+                    <span className="rounded-full bg-tide px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-white">
                       Selected
                     </span>
                   ) : null}
                 </div>
-                <div className="mt-4 grid gap-1 text-sm text-slate">
-                  <p>Starting price: {item.startingPrice ?? "N/A"}</p>
-                  <p>Auctioneer: {item.auctioneer?.name ?? item.auctioneer?.auctioneerId ?? "Unknown"}</p>
-                  {item.description ? <p>{item.description}</p> : null}
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-ink/5 px-3 py-1 text-xs font-medium text-slate">
+                    Start ${item.startingPrice ?? "N/A"}
+                  </span>
+                  <span className="rounded-full bg-ember/10 px-3 py-1 text-xs font-medium text-ember">
+                    {item.auctioneer?.name ?? item.auctioneer?.auctioneerId ?? "Unknown seller"}
+                  </span>
+                </div>
+                <div className="mt-4 text-sm leading-6 text-slate">
+                  {item.description ? <p>{item.description}</p> : <p>No description available yet.</p>}
                 </div>
               </button>
             );
