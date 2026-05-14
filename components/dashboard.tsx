@@ -723,6 +723,7 @@ export function Dashboard() {
                 subtitle={hasCatalogFilters ? "Filtered Marketplace" : "Campus Marketplace"}
                 items={catalogItems}
                 selectedItemId={selectedItemId}
+                showBidStats
                 emptyMessage={
                   hasCatalogFilters
                     ? "No listings match those filters right now. Try widening your search."
