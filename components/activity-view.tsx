@@ -8,10 +8,23 @@ import { useAuthSession } from "@/lib/auth-session";
 import { api } from "@/lib/api";
 import type { ActiveBidSummary } from "@/lib/types";
 
+/**
+ * Formats an item's condition string for UI display.
+ * 
+ * * @param {ActiveBidSummary["condition"]} condition - raw condition string from the item summary
+ * @returns {string} the formatted condition string with spaces instead of underscores, or a fallback message if undefined
+ */
 function conditionLabel(condition: ActiveBidSummary["condition"]) {
   return condition ? condition.replaceAll("_", " ") : "Condition unavailable";
 }
 
+/**
+ * Evaluates whether an active bid item matches a given search query.
+ *
+ * * @param {ActiveBidSummary} item - the bid summary object to evaluate
+ * @param {string} query - the search query string (expected to be lowercase)
+ * @returns {boolean} true if the item contains the search query in any of its searchable fields
+ */
 function activityMatchesSearch(item: ActiveBidSummary, query: string) {
   const haystack = [
     item.itemId,
@@ -28,6 +41,11 @@ function activityMatchesSearch(item: ActiveBidSummary, query: string) {
   return haystack.includes(query);
 }
 
+/**
+ * Renders the activity dashboard displaying a user's active bids or live listings.
+ * 
+ * * @returns {JSX.Element} the rendered ActivityView component
+ */
 export function ActivityView() {
   const { ready, currentUser, accessToken, isBidder, isAuctioneer } = useAuthSession();
   const [items, setItems] = useState<ActiveBidSummary[]>([]);
