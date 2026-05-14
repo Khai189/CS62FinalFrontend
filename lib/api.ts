@@ -1,27 +1,25 @@
 import type {
   ApiResponse,
+  AuthSession,
+  AuthUser,
   BidItem,
-  Bidder,
   Credentials,
   ListItemPayload,
-  PlaceBidPayload
+  PlaceBidPayload,
+  RegisterPayload
 } from "@/lib/types";
 
 const FRONTEND_PROXY_BASE = "/api/backend";
 
-function toBasicAuth(credentials: Credentials) {
-  return `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`;
-}
-
 async function request<T>(
   path: string,
-  credentials: Credentials,
-  init?: RequestInit
+  init?: RequestInit,
+  accessToken?: string
 ): Promise<ApiResponse<T>> {
   const response = await fetch(`${FRONTEND_PROXY_BASE}${path}`, {
     ...init,
     headers: {
-      Authorization: toBasicAuth(credentials),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       "Content-Type": "application/json",
       ...(init?.headers ?? {})
     },
@@ -41,72 +39,67 @@ async function request<T>(
 }
 
 export const api = {
-  getAllItems(credentials: Credentials) {
-    return request<BidItem[]>("/items/all", credentials, { method: "GET" });
-  },
-
-  getAllBidders(credentials: Credentials) {
-    return request<Bidder[]>("/bidders/all", credentials, { method: "GET" });
-  },
-
-  getBidder(credentials: Credentials, bidderId: string) {
-    return request<Bidder>(`/bidders/${encodeURIComponent(bidderId)}`, credentials, {
-      method: "GET"
-    });
-  },
-
-  addBidder(credentials: Credentials, bidderId: string, name: string) {
-    return request<string>(
-      `/bidders/add/${encodeURIComponent(bidderId)}/${encodeURIComponent(name)}`,
-      credentials,
-      { method: "POST", headers: { "Content-Type": "text/plain" } }
-    );
-  },
-
-  listItem(credentials: Credentials, payload: ListItemPayload) {
-    return request<string>("/bid/list", credentials, {
+  register(payload: RegisterPayload) {
+    return request<AuthSession>("/auth/register", {
       method: "POST",
       body: JSON.stringify(payload)
     });
   },
 
-  placeBid(credentials: Credentials, itemId: string, payload: PlaceBidPayload) {
-    return request<string>(`/bid/${encodeURIComponent(itemId)}`, credentials, {
+  login(credentials: Credentials) {
+    return request<AuthSession>("/auth/login", {
       method: "POST",
-      body: JSON.stringify(payload)
+      body: JSON.stringify(credentials)
     });
   },
 
-  getHighestBid(credentials: Credentials, itemId: string) {
-    return request<string>(`/bid/${encodeURIComponent(itemId)}/highest`, credentials, {
-      method: "GET"
-    });
+  getMe(accessToken: string) {
+    return request<AuthUser>("/auth/me", { method: "GET" }, accessToken);
   },
 
-  removeBid(credentials: Credentials, itemId: string, bidderId: string) {
+  getAllItems(accessToken: string) {
+    return request<BidItem[]>("/items/all", { method: "GET" }, accessToken);
+  },
+
+  listItem(accessToken: string, payload: ListItemPayload) {
     return request<string>(
-      `/bid/${encodeURIComponent(itemId)}/${encodeURIComponent(bidderId)}`,
-      credentials,
-      { method: "DELETE" }
+      "/bid/list",
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      },
+      accessToken
     );
   },
 
-  getRecommendations(
-    credentials: Credentials,
-    bidderId: string,
-    itemId: string,
-    totalRecs: number
-  ) {
+  placeBid(accessToken: string, itemId: string, payload: PlaceBidPayload) {
+    return request<string>(
+      `/bid/${encodeURIComponent(itemId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      },
+      accessToken
+    );
+  },
+
+  getHighestBid(accessToken: string, itemId: string) {
+    return request<string>(`/bid/${encodeURIComponent(itemId)}/highest`, { method: "GET" }, accessToken);
+  },
+
+  removeBid(accessToken: string, itemId: string) {
+    return request<string>(`/bid/${encodeURIComponent(itemId)}`, { method: "DELETE" }, accessToken);
+  },
+
+  getRecommendations(accessToken: string, bidderId: string, itemId: string, totalRecs: number) {
     return request<BidItem[]>(
       `/rec/${encodeURIComponent(bidderId)}/${encodeURIComponent(itemId)}/${totalRecs}`,
-      credentials,
-      { method: "GET" }
+      { method: "GET" },
+      accessToken
     );
   },
 
-  getFeed(credentials: Credentials, bidderId: string) {
-    return request<BidItem[]>(`/feed/${encodeURIComponent(bidderId)}`, credentials, {
-      method: "GET"
-    });
+  getFeed(accessToken: string, bidderId: string) {
+    return request<BidItem[]>(`/feed/${encodeURIComponent(bidderId)}`, { method: "GET" }, accessToken);
   }
 };
