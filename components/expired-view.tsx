@@ -151,8 +151,7 @@ export function ExpiredView() {
                             <p className="section-eyebrow mb-2">
                               {item.auctioneerName ?? item.auctioneerId ?? "Unknown seller"}
                             </p>
-                            <h2 className="text-2xl text-ink">{item.itemName || item.itemId}</h2>
-                            <p className="mt-1 text-sm text-slate">{item.itemId}</p>
+                            <h2 className="text-2xl text-ink">{item.itemName || "Untitled listing"}</h2>
                           </div>
                           <span className="rounded-full bg-ink/5 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate">
                             Expired

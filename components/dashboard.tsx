@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ItemGrid } from "@/components/item-grid";
 import { SectionCard } from "@/components/section-card";
@@ -16,7 +17,6 @@ import type {
   ItemSearchFilters,
   ListedItemResponse,
   ListItemPayload,
-  PlaceBidPayload,
   RegisterPayload
 } from "@/lib/types";
 
@@ -76,6 +76,7 @@ function parseNumber(value: string) {
 export function Dashboard() {
   const { ready, currentUser, accessToken, saveSession, signOut, isBidder, isAuctioneer, activeBidderId } =
     useAuthSession();
+  const router = useRouter();
 
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [loginForm, setLoginForm] = useState<Credentials>({ username: "", password: "" });
@@ -110,8 +111,6 @@ export function Dashboard() {
     condition: "NEW"
   });
   const [itemPriceInput, setItemPriceInput] = useState("");
-  const [bidPayload, setBidPayload] = useState<PlaceBidPayload>({ amount: 0 });
-  const [highestBidText, setHighestBidText] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
   const [loadingLabel, setLoadingLabel] = useState<string | null>(null);
@@ -167,7 +166,6 @@ export function Dashboard() {
     setRecommendedItems([]);
     setSelectedItemId("");
     setItemPriceInput("");
-    setHighestBidText("");
     setFeedSearch("");
     setCatalogFilterForm({
       query: "",
@@ -337,6 +335,14 @@ export function Dashboard() {
 
   function handleSelectItem(item: BidItem) {
     setSelectedItemId(item.itemId);
+    if (isBidder) {
+      router.push(`/listings/${encodeURIComponent(item.itemId)}`);
+    }
+  }
+
+  function listingOptionLabel(item: BidItem) {
+    const seller = item.auctioneer?.name ?? item.auctioneer?.auctioneerId ?? "Unknown seller";
+    return `${item.itemName || "Untitled listing"} · ${seller}`;
   }
 
   function applyCatalogFilters() {
@@ -413,14 +419,6 @@ export function Dashboard() {
 
   return (
     <main className="px-4 py-8 md:px-8 md:py-10">
-      <datalist id="item-id-options">
-        {knownItems.map((item) => (
-          <option key={item.itemId} value={item.itemId}>
-            {item.itemName ?? item.itemId}
-          </option>
-        ))}
-      </datalist>
-
       <div className="mx-auto max-w-7xl">
         <div className="surface-panel relative mb-8 overflow-hidden p-8 md:p-10">
           <div className="absolute inset-y-0 right-0 hidden w-80 bg-[radial-gradient(circle_at_top,rgba(47,111,115,0.18),transparent_58%)] lg:block" />
@@ -641,7 +639,7 @@ export function Dashboard() {
                     Search listings
                     <input
                       className="field-input"
-                      placeholder="Name, item ID, seller, or description"
+                      placeholder="Name, seller, or description"
                       value={catalogFilterForm.query}
                       onChange={(event) =>
                         setCatalogFilterForm((current) => ({ ...current, query: event.target.value }))
@@ -741,7 +739,7 @@ export function Dashboard() {
                         Search your feed
                         <input
                           className="field-input"
-                          placeholder="Search by listing name, seller, or item ID"
+                          placeholder="Search by listing name, seller, or description"
                           value={feedSearch}
                           onChange={(event) => setFeedSearch(event.target.value)}
                         />
@@ -766,12 +764,18 @@ export function Dashboard() {
                     <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
                       <label className="field-label">
                         Start from this listing
-                        <input
+                        <select
                           className="field-input"
-                          list="item-id-options"
                           value={selectedItemId}
                           onChange={(event) => setSelectedItemId(event.target.value)}
-                        />
+                        >
+                          <option value="">Choose a listing</option>
+                          {knownItems.map((item) => (
+                            <option key={item.itemId} value={item.itemId}>
+                              {listingOptionLabel(item)}
+                            </option>
+                          ))}
+                        </select>
                       </label>
                       <label className="field-label">
                         Number of suggestions
@@ -855,67 +859,6 @@ export function Dashboard() {
                   >
                     Post listing
                   </button>
-                </SectionCard>
-              ) : null}
-
-              {isBidder ? (
-                <SectionCard title="Place A Bid" subtitle="Buyer Tools">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <input
-                      className="field-input"
-                      list="item-id-options"
-                      placeholder="Listing ID"
-                      value={selectedItemId}
-                      onChange={(event) => setSelectedItemId(event.target.value)}
-                    />
-                    <input
-                      className="field-input"
-                      placeholder="Your bid"
-                      type="number"
-                      value={bidPayload.amount}
-                      onChange={(event) => setBidPayload({ amount: Number(event.target.value) })}
-                    />
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      className="primary-button button-moss"
-                      onClick={() =>
-                        runAction("Placing bid", () => api.placeBid(accessToken, selectedItemId, bidPayload), () => {
-                          setReloadKey((current) => current + 1);
-                        })
-                      }
-                    >
-                      Place bid
-                    </button>
-                    <button
-                      type="button"
-                      className="primary-button button-ink"
-                      onClick={() =>
-                        runAction("Checking top bid", () => api.getHighestBid(accessToken, selectedItemId), (response) => {
-                          setHighestBidText(response.raw);
-                        })
-                      }
-                    >
-                      View top bid
-                    </button>
-                    <button
-                      type="button"
-                      className="primary-button button-ember"
-                      onClick={() =>
-                        runAction("Removing bid", () => api.removeBid(accessToken, selectedItemId), () => {
-                          setReloadKey((current) => current + 1);
-                        })
-                      }
-                    >
-                      Remove my bid
-                    </button>
-                  </div>
-                  {highestBidText ? (
-                    <p className="mt-4 rounded-3xl border border-[color:var(--line)] bg-white/70 px-4 py-3 text-sm text-slate">
-                      {highestBidText}
-                    </p>
-                  ) : null}
                 </SectionCard>
               ) : null}
             </>

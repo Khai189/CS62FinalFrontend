@@ -53,8 +53,7 @@ export function ItemGrid({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-xl text-ink">{item.itemName || item.itemId}</h3>
-                    <p className="mt-1 text-sm text-slate/90">{item.itemId}</p>
+                    <h3 className="text-xl text-ink">{item.itemName || "Untitled listing"}</h3>
                   </div>
                   {isSelected ? (
                     <span className="rounded-full bg-tide px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-white">

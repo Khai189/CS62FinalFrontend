@@ -85,6 +85,10 @@ export const api = {
     return request<BidItem[]>(path, { method: "GET" }, accessToken);
   },
 
+  getItem(accessToken: string, itemId: string) {
+    return request<BidItem>(`/items/${encodeURIComponent(itemId)}`, { method: "GET" }, accessToken);
+  },
+
   listItem(accessToken: string, payload: ListItemPayload) {
     return request<ListedItemResponse>(
       "/bid/list",
