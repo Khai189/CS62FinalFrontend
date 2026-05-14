@@ -10,6 +10,13 @@ export const metadata: Metadata = {
   description: "5CBid: The Bidding Platform for 5C Students"
 };
 
+/**
+ * The root layout component for the 5CBid application.
+ * 
+ * @param {Object} props - the component props
+ * @param {ReactNode} props.children - the specific page content to be rendered within the layout
+ * @returns {JSX.Element} the rendered root layout with global providers and navigation
+ */
 export default function RootLayout({
   children
 }: Readonly<{
