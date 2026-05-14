@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 import { SectionCard } from "@/components/section-card";
 import { StatusBanner } from "@/components/status-banner";
 import { useAuthSession } from "@/lib/auth-session";
@@ -143,6 +144,7 @@ export function ListingDetailView({ itemId }: ListingDetailViewProps) {
     if (!accessToken || !isBidder) {
       setStatusTone("error");
       setStatusMessage("Only signed-in bidder accounts can place bids.");
+      toast.error("Only bidder accounts can place bids.");
       return;
     }
     const token = accessToken;
@@ -156,13 +158,16 @@ export function ListingDetailView({ itemId }: ListingDetailViewProps) {
         setStatusMessage(response.raw || "Your bid was placed.");
         setHighestBidAmount(bidAmount);
         setHighestBidderId(user?.profileId ?? user?.username ?? null);
+        toast.success(`Bid placed for $${bidAmount}.`);
       } else {
         setStatusTone("error");
         setStatusMessage(response.raw || "We could not place your bid.");
+        toast.error(response.raw || "We could not place your bid.");
       }
     } catch (error) {
       setStatusTone("error");
       setStatusMessage(error instanceof Error ? error.message : "Unknown network error.");
+      toast.error(error instanceof Error ? error.message : "Unknown network error.");
     } finally {
       setLoadingLabel(null);
     }

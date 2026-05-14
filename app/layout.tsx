@@ -1,7 +1,9 @@
 import "./globals.css";
+import "react-toastify/dist/ReactToastify.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { SiteNav } from "@/components/site-nav";
+import { ToastProvider } from "@/components/toast-provider";
 
 export const metadata: Metadata = {
   title: "5CBid",
@@ -18,6 +20,7 @@ export default function RootLayout({
       <body>
         <SiteNav />
         {children}
+        <ToastProvider />
       </body>
     </html>
   );
