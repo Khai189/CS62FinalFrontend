@@ -3,6 +3,20 @@ export type Credentials = {
   password: string;
 };
 
+export type AuthUser = {
+  username: string;
+  email: string;
+  displayName: string;
+  role: "BIDDER" | "AUCTIONEER" | "ADMIN";
+  profileId: string | null;
+};
+
+export type AuthSession = {
+  accessToken: string;
+  tokenType: "Bearer";
+  user: AuthUser;
+};
+
 export type Bidder = {
   bidderId: string;
   name: string | null;
@@ -25,13 +39,19 @@ export type ListItemPayload = {
   itemId: string;
   itemName: string;
   startingPrice: number;
-  auctioneerId: string;
-  auctioneerName: string;
 };
 
 export type PlaceBidPayload = {
-  bidderId: string;
   amount: number;
+  bidderId?: string;
+};
+
+export type RegisterPayload = {
+  username: string;
+  email: string;
+  password: string;
+  displayName: string;
+  role: "BIDDER" | "AUCTIONEER";
 };
 
 export type ApiResponse<T> = {
