@@ -1,13 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ItemGrid } from "@/components/item-grid";
 import { SectionCard } from "@/components/section-card";
 import { StatusBanner } from "@/components/status-banner";
+import { useAuthSession } from "@/lib/auth-session";
 import { api } from "@/lib/api";
 import type {
   ApiResponse,
-  AuthSession,
   AuthUser,
   BidItem,
   Credentials,
@@ -15,8 +16,6 @@ import type {
   PlaceBidPayload,
   RegisterPayload
 } from "@/lib/types";
-
-const SESSION_STORAGE_KEY = "ccbid-jwt-session";
 
 function mergeItems(current: BidItem[], incoming: BidItem[]) {
   const merged = new Map<string, BidItem>();
@@ -47,7 +46,9 @@ function toKnownItem(payload: ListItemPayload, user: AuthUser): BidItem {
 }
 
 export function Dashboard() {
-  const [session, setSession] = useState<AuthSession | null>(null);
+  const { ready, currentUser, accessToken, saveSession, signOut, isBidder, isAuctioneer, activeBidderId } =
+    useAuthSession();
+
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [loginForm, setLoginForm] = useState<Credentials>({ username: "", password: "" });
   const [signupForm, setSignupForm] = useState<RegisterPayload>({
@@ -64,6 +65,7 @@ export function Dashboard() {
   const [recommendedItems, setRecommendedItems] = useState<BidItem[]>([]);
 
   const [selectedItemId, setSelectedItemId] = useState("");
+  const [feedSearch, setFeedSearch] = useState("");
   const [totalRecs, setTotalRecs] = useState(4);
   const [itemPayload, setItemPayload] = useState<ListItemPayload>({
     itemId: "",
@@ -80,32 +82,22 @@ export function Dashboard() {
     "Create an account to browse live student listings, place bids, or post something of your own."
   );
 
-  const currentUser = session?.user ?? null;
-  const accessToken = session?.accessToken ?? null;
-  const isBidder = currentUser?.role === "BIDDER";
-  const isAuctioneer = currentUser?.role === "AUCTIONEER";
-  const activeBidderId = isBidder ? currentUser?.profileId ?? currentUser?.username ?? "" : "";
-
   const authSummary = useMemo(() => {
     if (!accessToken) {
       return "Guest browsing mode";
     }
-    return `Signed in with secure access`;
+    return "Signed in and ready to trade";
   }, [accessToken]);
 
-  function persistSession(nextSession: AuthSession) {
-    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
-  }
-
-  function clearSession() {
-    window.localStorage.removeItem(SESSION_STORAGE_KEY);
-    setSession(null);
+  function clearSessionState() {
+    signOut();
     setCatalogItems([]);
     setKnownItems([]);
     setFeedItems([]);
     setRecommendedItems([]);
     setSelectedItemId("");
     setHighestBidText("");
+    setFeedSearch("");
   }
 
   function rememberItems(incoming: BidItem[]) {
@@ -143,44 +135,8 @@ export function Dashboard() {
   }
 
   useEffect(() => {
-    const storedSession = window.localStorage.getItem(SESSION_STORAGE_KEY);
-    if (!storedSession) {
-      return;
-    }
-    const storedSessionValue = storedSession;
-
-    let cancelled = false;
-
-    async function hydrateSession() {
-      try {
-        const parsed = JSON.parse(storedSessionValue) as AuthSession;
-        const response = await api.getMe(parsed.accessToken);
-        if (cancelled) {
-          return;
-        }
-
-        if (response.ok && response.data) {
-          const restoredSession = { ...parsed, user: response.data };
-          setSession(restoredSession);
-          persistSession(restoredSession);
-          setStatusTone("neutral");
-          setStatusMessage("Welcome back. Your account is ready and the market is open.");
-        } else {
-          window.localStorage.removeItem(SESSION_STORAGE_KEY);
-        }
-      } catch {
-        window.localStorage.removeItem(SESSION_STORAGE_KEY);
-      }
-    }
-
-    void hydrateSession();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
     if (!accessToken || !currentUser) {
+      setCatalogItems([]);
       return;
     }
     const token = accessToken;
@@ -215,6 +171,7 @@ export function Dashboard() {
     if (!accessToken || !currentUser || !activeBidderId) {
       setFeedItems([]);
       setRecommendedItems([]);
+      setFeedSearch("");
       return;
     }
     const token = accessToken;
@@ -273,8 +230,44 @@ export function Dashboard() {
     };
   }, [accessToken, activeBidderId, currentUser, selectedItemId, totalRecs, reloadKey]);
 
+  const filteredFeedItems = useMemo(() => {
+    const query = feedSearch.trim().toLowerCase();
+    if (!query) {
+      return feedItems;
+    }
+
+    return feedItems.filter((item) => {
+      const haystack = [
+        item.itemId,
+        item.itemName,
+        item.description,
+        item.auctioneer?.name,
+        item.auctioneer?.auctioneerId
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [feedItems, feedSearch]);
+
   function handleSelectItem(item: BidItem) {
     setSelectedItemId(item.itemId);
+  }
+
+  if (!ready) {
+    return (
+      <main className="px-4 py-8 md:px-8 md:py-10">
+        <div className="mx-auto max-w-7xl">
+          <StatusBanner
+            title="Loading marketplace"
+            body="Pulling up your account and the latest campus listings."
+            tone="neutral"
+          />
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -307,10 +300,14 @@ export function Dashboard() {
               </div>
             </div>
             <div className="glass-tile max-w-sm px-5 py-4 text-sm text-slate">
-              <p className="section-eyebrow mb-3">Market Status</p>
+              <p className="section-eyebrow mb-3">Today On 5CBid</p>
               <div className="grid gap-2">
                 <p>{authSummary}</p>
-                <p>{currentUser ? `${currentUser.displayName} is signed in as ${currentUser.role.toLowerCase()}` : "No one is signed in yet"}</p>
+                <p>
+                  {currentUser
+                    ? `${currentUser.displayName} is signed in as ${currentUser.role.toLowerCase()}`
+                    : "Sign in to bid, list items, and build your personalized feed"}
+                </p>
                 <p>{loadingLabel ? `Working on: ${loadingLabel}` : "Ready for browsing"}</p>
               </div>
             </div>
@@ -374,8 +371,7 @@ export function Dashboard() {
                         if (!response.data) {
                           return;
                         }
-                        setSession(response.data);
-                        persistSession(response.data);
+                        saveSession(response.data);
                         setStatusMessage(`Welcome back, ${response.data.user.displayName}.`);
                       })
                     }
@@ -452,8 +448,7 @@ export function Dashboard() {
                           if (!response.data) {
                             return;
                           }
-                          setSession(response.data);
-                          persistSession(response.data);
+                          saveSession(response.data);
                           setStatusMessage(`Welcome to 5CBid, ${response.data.user.displayName}.`);
                         })
                       }
@@ -466,26 +461,33 @@ export function Dashboard() {
             </SectionCard>
           ) : (
             <>
-              <SectionCard title="Your Account" subtitle="Marketplace Profile">
+              <SectionCard title={`Welcome Back, ${currentUser.displayName}`} subtitle="Marketplace Home">
                 <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
                   <div className="grid gap-2 text-sm text-slate">
-                    <p>Signed in as {currentUser.displayName}</p>
-                    <p>Username: {currentUser.username}</p>
-                    <p>Account type: {currentUser.role}</p>
-                    <p>Email: {currentUser.email}</p>
-                    <p>Profile ID: {currentUser.profileId ?? "No active marketplace profile"}</p>
+                    <p>You are browsing as a {currentUser.role.toLowerCase()}.</p>
+                    <p>Use the navigation bar to move between the marketplace and your profile.</p>
+                    <p>
+                      {isBidder
+                        ? "Your feed and recommendations update based on what you explore and bid on."
+                        : "Your seller tools are ready below so you can post new campus listings."}
+                    </p>
                   </div>
-                  <button
-                    type="button"
-                    className="primary-button button-ember w-fit"
-                    onClick={() => {
-                      clearSession();
-                      setStatusTone("neutral");
-                      setStatusMessage("You signed out. Come back when you are ready to browse again.");
-                    }}
-                  >
-                    Sign out
-                  </button>
+                  <div className="flex flex-wrap gap-3">
+                    <Link href="/profile" className="primary-button button-tide inline-flex w-fit">
+                      View profile
+                    </Link>
+                    <button
+                      type="button"
+                      className="primary-button button-ember w-fit"
+                      onClick={() => {
+                        clearSessionState();
+                        setStatusTone("neutral");
+                        setStatusMessage("You signed out. Come back when you are ready to browse again.");
+                      }}
+                    >
+                      Sign out
+                    </button>
+                  </div>
                 </div>
               </SectionCard>
 
@@ -500,14 +502,32 @@ export function Dashboard() {
 
               {isBidder ? (
                 <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-                  <ItemGrid
-                    title="Picked For You"
-                    subtitle="Your Feed"
-                    items={feedItems}
-                    selectedItemId={selectedItemId}
-                    emptyMessage="Your feed is quiet right now. Bid on a few items and this section will learn your taste."
-                    onSelect={handleSelectItem}
-                  />
+                  <SectionCard title="Picked For You" subtitle="Your Feed">
+                    <div className="grid gap-4">
+                      <label className="field-label">
+                        Search your feed
+                        <input
+                          className="field-input"
+                          placeholder="Search by listing name, seller, or item ID"
+                          value={feedSearch}
+                          onChange={(event) => setFeedSearch(event.target.value)}
+                        />
+                      </label>
+
+                      <ItemGrid
+                        title="Feed Results"
+                        subtitle={feedSearch ? "Filtered Listings" : "Fresh Listings"}
+                        items={filteredFeedItems}
+                        selectedItemId={selectedItemId}
+                        emptyMessage={
+                          feedSearch
+                            ? "No listings in your feed match that search yet."
+                            : "Your feed is quiet right now. Bid on a few items and this section will learn your taste."
+                        }
+                        onSelect={handleSelectItem}
+                      />
+                    </div>
+                  </SectionCard>
 
                   <SectionCard title="You Might Also Like" subtitle="Recommendations">
                     <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
@@ -544,144 +564,122 @@ export function Dashboard() {
                     </div>
                   </SectionCard>
                 </div>
-              ) : (
-                <SectionCard title="Recommendations" subtitle="Buyer Feature">
-                  <p className="text-sm leading-7 text-slate">
-                    Personalized suggestions are built for bidder accounts. If you want the site to
-                    learn what you like, create a buyer account and start bidding.
-                  </p>
-                </SectionCard>
-              )}
+              ) : null}
 
-              <div className="grid gap-6 xl:grid-cols-2">
+              {isAuctioneer ? (
                 <SectionCard title="Post A Listing" subtitle="Seller Tools">
-                  {isAuctioneer ? (
-                    <>
-                      <div className="grid gap-3">
-                        <input
-                          className="field-input"
-                          placeholder="Listing ID"
-                          value={itemPayload.itemId}
-                          onChange={(event) =>
-                            setItemPayload((current) => ({ ...current, itemId: event.target.value }))
-                          }
-                        />
-                        <input
-                          className="field-input"
-                          placeholder="Listing title"
-                          value={itemPayload.itemName}
-                          onChange={(event) =>
-                            setItemPayload((current) => ({ ...current, itemName: event.target.value }))
-                          }
-                        />
-                        <input
-                          className="field-input"
-                          placeholder="Opening bid"
-                          type="number"
-                          value={itemPayload.startingPrice}
-                          onChange={(event) =>
-                            setItemPayload((current) => ({
-                              ...current,
-                              startingPrice: Number(event.target.value)
-                            }))
-                          }
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        className="primary-button button-tide mt-4"
-                        onClick={() =>
-                          runAction("Posting listing", () => api.listItem(accessToken, itemPayload), (response) => {
-                            if (!response.ok || !currentUser || !itemPayload.itemId) {
-                              return;
-                            }
-                            const item = toKnownItem(itemPayload, currentUser);
-                            setCatalogItems((current) => mergeItems(current, [item]));
-                            rememberItems([item]);
-                            setSelectedItemId(item.itemId);
-                            setItemPayload({ itemId: "", itemName: "", startingPrice: 0 });
-                            setReloadKey((current) => current + 1);
-                          })
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <input
+                      className="field-input"
+                      placeholder="Listing ID"
+                      value={itemPayload.itemId}
+                      onChange={(event) =>
+                        setItemPayload((current) => ({ ...current, itemId: event.target.value }))
+                      }
+                    />
+                    <input
+                      className="field-input"
+                      placeholder="Listing title"
+                      value={itemPayload.itemName}
+                      onChange={(event) =>
+                        setItemPayload((current) => ({ ...current, itemName: event.target.value }))
+                      }
+                    />
+                    <input
+                      className="field-input"
+                      placeholder="Opening bid"
+                      type="number"
+                      value={itemPayload.startingPrice}
+                      onChange={(event) =>
+                        setItemPayload((current) => ({
+                          ...current,
+                          startingPrice: Number(event.target.value)
+                        }))
+                      }
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="primary-button button-tide mt-4"
+                    onClick={() =>
+                      runAction("Posting listing", () => api.listItem(accessToken, itemPayload), (response) => {
+                        if (!response.ok || !currentUser || !itemPayload.itemId) {
+                          return;
                         }
-                      >
-                        Post listing
-                      </button>
-                    </>
-                  ) : (
-                    <p className="text-sm leading-7 text-slate">
-                      Only seller accounts can post listings. If you want to sell something around the 5Cs,
-                      create an auctioneer account.
-                    </p>
-                  )}
+                        const item = toKnownItem(itemPayload, currentUser);
+                        setCatalogItems((current) => mergeItems(current, [item]));
+                        rememberItems([item]);
+                        setSelectedItemId(item.itemId);
+                        setItemPayload({ itemId: "", itemName: "", startingPrice: 0 });
+                        setReloadKey((current) => current + 1);
+                      })
+                    }
+                  >
+                    Post listing
+                  </button>
                 </SectionCard>
+              ) : null}
 
+              {isBidder ? (
                 <SectionCard title="Place A Bid" subtitle="Buyer Tools">
-                  {isBidder ? (
-                    <>
-                      <div className="grid gap-3">
-                        <input
-                          className="field-input"
-                          list="item-id-options"
-                          placeholder="Listing ID"
-                          value={selectedItemId}
-                          onChange={(event) => setSelectedItemId(event.target.value)}
-                        />
-                        <input
-                          className="field-input"
-                          placeholder="Your bid"
-                          type="number"
-                          value={bidPayload.amount}
-                          onChange={(event) => setBidPayload({ amount: Number(event.target.value) })}
-                        />
-                      </div>
-                      <div className="mt-4 flex flex-wrap gap-3">
-                        <button
-                          type="button"
-                          className="primary-button button-moss"
-                          onClick={() =>
-                            runAction("Placing bid", () => api.placeBid(accessToken, selectedItemId, bidPayload), () => {
-                              setReloadKey((current) => current + 1);
-                            })
-                          }
-                        >
-                          Place bid
-                        </button>
-                        <button
-                          type="button"
-                          className="primary-button button-ink"
-                          onClick={() =>
-                            runAction("Checking top bid", () => api.getHighestBid(accessToken, selectedItemId), (response) => {
-                              setHighestBidText(response.raw);
-                            })
-                          }
-                        >
-                          View top bid
-                        </button>
-                        <button
-                          type="button"
-                          className="primary-button button-ember"
-                          onClick={() =>
-                            runAction("Removing bid", () => api.removeBid(accessToken, selectedItemId), () => {
-                              setReloadKey((current) => current + 1);
-                            })
-                          }
-                        >
-                          Remove my bid
-                        </button>
-                      </div>
-                      {highestBidText ? (
-                        <p className="mt-4 rounded-3xl border border-[color:var(--line)] bg-white/70 px-4 py-3 text-sm text-slate">
-                          {highestBidText}
-                        </p>
-                      ) : null}
-                    </>
-                  ) : (
-                    <p className="text-sm leading-7 text-slate">
-                      Only buyer accounts can place or remove bids. Switch to a bidder account to join the auction.
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <input
+                      className="field-input"
+                      list="item-id-options"
+                      placeholder="Listing ID"
+                      value={selectedItemId}
+                      onChange={(event) => setSelectedItemId(event.target.value)}
+                    />
+                    <input
+                      className="field-input"
+                      placeholder="Your bid"
+                      type="number"
+                      value={bidPayload.amount}
+                      onChange={(event) => setBidPayload({ amount: Number(event.target.value) })}
+                    />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      className="primary-button button-moss"
+                      onClick={() =>
+                        runAction("Placing bid", () => api.placeBid(accessToken, selectedItemId, bidPayload), () => {
+                          setReloadKey((current) => current + 1);
+                        })
+                      }
+                    >
+                      Place bid
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-button button-ink"
+                      onClick={() =>
+                        runAction("Checking top bid", () => api.getHighestBid(accessToken, selectedItemId), (response) => {
+                          setHighestBidText(response.raw);
+                        })
+                      }
+                    >
+                      View top bid
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-button button-ember"
+                      onClick={() =>
+                        runAction("Removing bid", () => api.removeBid(accessToken, selectedItemId), () => {
+                          setReloadKey((current) => current + 1);
+                        })
+                      }
+                    >
+                      Remove my bid
+                    </button>
+                  </div>
+                  {highestBidText ? (
+                    <p className="mt-4 rounded-3xl border border-[color:var(--line)] bg-white/70 px-4 py-3 text-sm text-slate">
+                      {highestBidText}
                     </p>
-                  )}
+                  ) : null}
                 </SectionCard>
-              </div>
+              ) : null}
             </>
           )}
         </div>
