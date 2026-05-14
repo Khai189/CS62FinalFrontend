@@ -26,6 +26,7 @@ type ItemListingApi = {
   highestBidderId: string | null;
   highestBidAmount: number | null;
   bidCount: number | null;
+  expiresAt: string | null;
 };
 
 async function request<T>(
@@ -70,7 +71,8 @@ function normalizeItem(item: ItemListingApi): BidItem {
       : null,
     highestBidderId: item.highestBidderId,
     highestBidAmount: item.highestBidAmount,
-    bidCount: item.bidCount
+    bidCount: item.bidCount,
+    expiresAt: item.expiresAt
   };
 }
 

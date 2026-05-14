@@ -40,6 +40,36 @@ function parseHighestBid(raw: string) {
   };
 }
 
+function formatTimeRemaining(expiresAt: string | null | undefined, now: number) {
+  if (!expiresAt) {
+    return "Time remaining unavailable";
+  }
+  const target = new Date(expiresAt).getTime();
+  if (Number.isNaN(target)) {
+    return "Time remaining unavailable";
+  }
+  const diff = target - now;
+  if (diff <= 0) {
+    return "Expired";
+  }
+  const totalSeconds = Math.floor(diff / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m left`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s left`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s left`;
+  }
+  return `${seconds}s left`;
+}
+
 type ListingDetailViewProps = {
   itemId: string;
 };
@@ -58,6 +88,7 @@ export function ListingDetailView({ itemId }: ListingDetailViewProps) {
   const [highestBidAmount, setHighestBidAmount] = useState<number | null>(null);
   const [highestBidderId, setHighestBidderId] = useState<string | null>(null);
   const [bidAmount, setBidAmount] = useState(1);
+  const [now, setNow] = useState(() => Date.now());
   const [loadingLabel, setLoadingLabel] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<"neutral" | "success" | "error">("neutral");
   const [statusMessage, setStatusMessage] = useState(
@@ -129,6 +160,11 @@ export function ListingDetailView({ itemId }: ListingDetailViewProps) {
     };
   }, [accessToken, currentUser, itemId]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const referenceBid = useMemo(() => {
     if (highestBidAmount != null) {
       return highestBidAmount;
@@ -188,6 +224,14 @@ export function ListingDetailView({ itemId }: ListingDetailViewProps) {
         setStatusMessage(`Bid at $${bidAmount} successful!`);
         setHighestBidAmount(bidAmount);
         setHighestBidderId(user?.profileId ?? user?.username ?? null);
+        setItem((current) => current == null
+          ? current
+          : {
+              ...current,
+              bidCount: (current.bidCount ?? 0) + 1,
+              highestBidAmount: bidAmount,
+              highestBidderId: user?.profileId ?? user?.username ?? null
+            });
         toast.success(`Bid at $${bidAmount} successful!`);
       } else {
         setStatusTone("error");
@@ -277,6 +321,14 @@ export function ListingDetailView({ itemId }: ListingDetailViewProps) {
                       <span className="font-semibold text-ink">
                         {highestBidderId ?? "No bidder yet"}
                       </span>
+                    </p>
+                    <p>
+                      Number of bids:{" "}
+                      <span className="font-semibold text-ink">{item.bidCount ?? 0}</span>
+                    </p>
+                    <p>
+                      Time remaining:{" "}
+                      <span className="font-semibold text-tide">{formatTimeRemaining(item.expiresAt, now)}</span>
                     </p>
                   </div>
                 </div>

@@ -28,6 +28,7 @@ export type Auctioneer = {
 };
 
 export type ItemCondition = "NEW" | "USED" | "HIGHLY_DAMAGED";
+export type ListingDurationUnit = "HOURS" | "DAYS" | "WEEKS" | "MONTHS";
 
 export type BidItem = {
   itemId: string;
@@ -39,6 +40,7 @@ export type BidItem = {
   highestBidderId?: string | null;
   highestBidAmount?: number | null;
   bidCount?: number | null;
+  expiresAt?: string | null;
 };
 
 export type ListItemPayload = {
@@ -46,6 +48,8 @@ export type ListItemPayload = {
   startingPrice: number;
   description: string;
   condition: ItemCondition;
+  durationAmount: number;
+  durationUnit: ListingDurationUnit;
 };
 
 export type ListedItemResponse = {
@@ -53,6 +57,7 @@ export type ListedItemResponse = {
   itemName: string | null;
   auctioneerId: string | null;
   auctioneerName: string | null;
+  expiresAt: string | null;
   message: string;
 };
 
