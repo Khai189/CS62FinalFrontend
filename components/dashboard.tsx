@@ -406,8 +406,8 @@ export function Dashboard() {
                 The One and Only 5C Bidding Auction: Sell Your Stuff and Get Real Money
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate md:text-lg">
-                5CBid is a campus marketplace for auction-style listings. Students can post items,
-                place bids, search the market, and get suggestions based on what they have been interested in already.
+                5CBid is a campus marketplace for auction-style listings, where students at the Claremont Colleges can post items,
+                place bids, search the market, and get suggestions based on previous interests.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <span className="hero-chip">Student listings</span>
