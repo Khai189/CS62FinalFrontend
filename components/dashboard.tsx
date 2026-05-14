@@ -801,9 +801,6 @@ export function Dashboard() {
 
               {isAuctioneer ? (
                 <SectionCard title="Post A Listing" subtitle="Seller Tools">
-                  <p className="mb-4 text-sm leading-6 text-slate">
-                    Listing IDs are generated automatically when you post, so buyers always get a clean marketplace link.
-                  </p>
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <input
                       className="field-input"
