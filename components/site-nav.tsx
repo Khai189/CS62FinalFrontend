@@ -4,12 +4,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthSession } from "@/lib/auth-session";
 
+/**
+ * Generates the CSS class string for navigation links based on their active state.
+ * 
+ * * @param {boolean} active - whether the link corresponds to the current URL path
+ * @returns {string} a space-separated string of Tailwind CSS classes for styling
+ */
 function navClasses(active: boolean) {
   return active
     ? "rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white"
     : "rounded-full bg-white/80 px-4 py-2 text-sm font-semibold text-slate transition hover:bg-white";
 }
 
+/**
+ * Renders the primary navigation header for the application.
+ * 
+ * @returns {JSX.Element} the rendered SiteNav component
+ */
 export function SiteNav() {
   const pathname = usePathname();
   const { currentUser } = useAuthSession();

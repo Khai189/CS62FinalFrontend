@@ -4,6 +4,15 @@ type StatusBannerProps = {
   tone?: "neutral" | "success" | "error";
 };
 
+/**
+ * A feedback component that displays status updates or system messages.
+ * 
+ * @param {StatusBannerProps} props - the component props
+ * @param {string} props.title - the heading text
+ * @param {string} props.body - the main message of the status update
+ * @param {"neutral" | "success" | "error"} [props.tone="neutral"] - the semantic tone determining the color scheme
+ * @returns {JSX.Element} the rendered StatusBanner component
+ */
 export function StatusBanner({ title, body, tone = "neutral" }: StatusBannerProps) {
   const toneClasses =
     tone === "success"
