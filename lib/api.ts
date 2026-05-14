@@ -75,6 +75,9 @@ export const api = {
     if (typeof filters?.maxPrice === "number") {
       params.set("maxPrice", String(filters.maxPrice));
     }
+    if (filters?.condition) {
+      params.set("condition", filters.condition);
+    }
 
     const queryString = params.toString();
     const path = queryString ? `/items/all?${queryString}` : "/items/all";

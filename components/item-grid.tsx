@@ -1,5 +1,9 @@
 import type { BidItem } from "@/lib/types";
 
+function conditionLabel(condition: BidItem["condition"]) {
+  return condition ? condition.replaceAll("_", " ") : "Condition unavailable";
+}
+
 type ItemGridProps = {
   title: string;
   subtitle: string;
@@ -61,6 +65,9 @@ export function ItemGrid({
                 <div className="mt-5 flex flex-wrap gap-2">
                   <span className="rounded-full bg-ink/5 px-3 py-1 text-xs font-medium text-slate">
                     Start ${item.startingPrice ?? "N/A"}
+                  </span>
+                  <span className="rounded-full bg-tide/10 px-3 py-1 text-xs font-medium text-tide">
+                    {conditionLabel(item.condition)}
                   </span>
                   <span className="rounded-full bg-ember/10 px-3 py-1 text-xs font-medium text-ember">
                     {item.auctioneer?.name ?? item.auctioneer?.auctioneerId ?? "Unknown seller"}

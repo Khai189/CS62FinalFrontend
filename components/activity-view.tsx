@@ -8,6 +8,10 @@ import { useAuthSession } from "@/lib/auth-session";
 import { api } from "@/lib/api";
 import type { ActiveBidSummary } from "@/lib/types";
 
+function conditionLabel(condition: ActiveBidSummary["condition"]) {
+  return condition ? condition.replaceAll("_", " ") : "Condition unavailable";
+}
+
 function activityMatchesSearch(item: ActiveBidSummary, query: string) {
   const haystack = [
     item.itemId,
@@ -154,6 +158,9 @@ export function ActivityView() {
                         <div className="mt-4 flex flex-wrap gap-2">
                           <span className="rounded-full bg-ink/5 px-3 py-1 text-xs font-medium text-slate">
                             Start ${item.startingPrice ?? "N/A"}
+                          </span>
+                          <span className="rounded-full bg-tide/10 px-3 py-1 text-xs font-medium text-tide">
+                            {conditionLabel(item.condition)}
                           </span>
                           <span className="rounded-full bg-ember/10 px-3 py-1 text-xs font-medium text-ember">
                             Highest ${item.highestBidAmount ?? "None yet"}

@@ -8,6 +8,10 @@ import { useAuthSession } from "@/lib/auth-session";
 import { api } from "@/lib/api";
 import type { BidHistorySummary } from "@/lib/types";
 
+function conditionLabel(condition: BidHistorySummary["condition"]) {
+  return condition ? condition.replaceAll("_", " ") : "Condition unavailable";
+}
+
 function historyMatchesSearch(item: BidHistorySummary, query: string) {
   const haystack = [
     item.itemId,
@@ -160,6 +164,9 @@ export function HistoryView() {
                         <div className="mt-4 flex flex-wrap gap-2">
                           <span className="rounded-full bg-ink/5 px-3 py-1 text-xs font-medium text-slate">
                             Start ${item.startingPrice ?? "N/A"}
+                          </span>
+                          <span className="rounded-full bg-tide/10 px-3 py-1 text-xs font-medium text-tide">
+                            {conditionLabel(item.condition)}
                           </span>
                           <span className="rounded-full bg-ember/10 px-3 py-1 text-xs font-medium text-ember">
                             Final high ${item.highestBidAmount ?? "None"}

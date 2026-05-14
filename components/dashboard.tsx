@@ -12,6 +12,7 @@ import type {
   AuthUser,
   BidItem,
   Credentials,
+  ItemCondition,
   ItemSearchFilters,
   ListItemPayload,
   PlaceBidPayload,
@@ -23,6 +24,7 @@ type CatalogFilterForm = {
   auctioneerId: string;
   minPrice: string;
   maxPrice: string;
+  condition: "" | ItemCondition;
 };
 
 function mergeItems(current: BidItem[], incoming: BidItem[]) {
@@ -46,6 +48,7 @@ function toKnownItem(payload: ListItemPayload, user: AuthUser): BidItem {
     itemName: payload.itemName,
     startingPrice: payload.startingPrice,
     description: payload.description || null,
+    condition: payload.condition,
     auctioneer: {
       auctioneerId: user.profileId ?? user.username,
       name: user.displayName
@@ -84,7 +87,8 @@ export function Dashboard() {
     query: "",
     auctioneerId: "",
     minPrice: "",
-    maxPrice: ""
+    maxPrice: "",
+    condition: ""
   });
   const [catalogFilters, setCatalogFilters] = useState<ItemSearchFilters>({});
   const [selectedItemId, setSelectedItemId] = useState("");
@@ -93,9 +97,11 @@ export function Dashboard() {
   const [itemPayload, setItemPayload] = useState<ListItemPayload>({
     itemId: "",
     itemName: "",
-    startingPrice: 0,
-    description: ""
+    startingPrice: 0.5,
+    description: "",
+    condition: "NEW"
   });
+  const [itemPriceInput, setItemPriceInput] = useState("");
   const [bidPayload, setBidPayload] = useState<PlaceBidPayload>({ amount: 0 });
   const [highestBidText, setHighestBidText] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
@@ -118,9 +124,21 @@ export function Dashboard() {
       catalogFilters.query ||
         catalogFilters.auctioneerId ||
         catalogFilters.minPrice != null ||
-        catalogFilters.maxPrice != null
+        catalogFilters.maxPrice != null ||
+        catalogFilters.condition
     );
   }, [catalogFilters]);
+
+  const parsedListingPrice = useMemo(() => parseNumber(itemPriceInput), [itemPriceInput]);
+  const listingPriceError = useMemo(() => {
+    if (!itemPriceInput.trim()) {
+      return null;
+    }
+    if (parsedListingPrice == null || parsedListingPrice < 0.5) {
+      return "Price must be equal to or above 50 cents";
+    }
+    return null;
+  }, [itemPriceInput, parsedListingPrice]);
 
   function clearSessionState() {
     signOut();
@@ -129,13 +147,15 @@ export function Dashboard() {
     setFeedItems([]);
     setRecommendedItems([]);
     setSelectedItemId("");
+    setItemPriceInput("");
     setHighestBidText("");
     setFeedSearch("");
     setCatalogFilterForm({
       query: "",
       auctioneerId: "",
       minPrice: "",
-      maxPrice: ""
+      maxPrice: "",
+      condition: ""
     });
     setCatalogFilters({});
   }
@@ -305,7 +325,8 @@ export function Dashboard() {
       query: catalogFilterForm.query.trim() || undefined,
       auctioneerId: catalogFilterForm.auctioneerId.trim() || undefined,
       minPrice: parseNumber(catalogFilterForm.minPrice),
-      maxPrice: parseNumber(catalogFilterForm.maxPrice)
+      maxPrice: parseNumber(catalogFilterForm.maxPrice),
+      condition: catalogFilterForm.condition || undefined
     });
   }
 
@@ -314,9 +335,41 @@ export function Dashboard() {
       query: "",
       auctioneerId: "",
       minPrice: "",
-      maxPrice: ""
+      maxPrice: "",
+      condition: ""
     });
     setCatalogFilters({});
+  }
+
+  function submitListing() {
+    if (!accessToken) {
+      setStatusTone("error");
+      setStatusMessage("Sign in again before posting a listing.");
+      return;
+    }
+    if (parsedListingPrice == null || parsedListingPrice < 0.5) {
+      setStatusTone("error");
+      setStatusMessage("Price must be equal to or above 50 cents");
+      return;
+    }
+
+    const payload: ListItemPayload = {
+      ...itemPayload,
+      startingPrice: parsedListingPrice
+    };
+
+    void runAction("Posting listing", () => api.listItem(accessToken, payload), (response) => {
+      if (!response.ok || !currentUser || !payload.itemId) {
+        return;
+      }
+      const item = toKnownItem(payload, currentUser);
+      setCatalogItems((current) => mergeItems(current, [item]));
+      rememberItems([item]);
+      setSelectedItemId(item.itemId);
+      setItemPayload({ itemId: "", itemName: "", startingPrice: 0.5, description: "", condition: "NEW" });
+      setItemPriceInput("");
+      setReloadKey((current) => current + 1);
+    });
   }
 
   if (!ready) {
@@ -558,7 +611,7 @@ export function Dashboard() {
               </SectionCard>
 
               <SectionCard title="Find Listings" subtitle="Search And Filter">
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                   <label className="field-label">
                     Search listings
                     <input
@@ -607,6 +660,24 @@ export function Dashboard() {
                         setCatalogFilterForm((current) => ({ ...current, maxPrice: event.target.value }))
                       }
                     />
+                  </label>
+                  <label className="field-label">
+                    Condition
+                    <select
+                      className="field-input"
+                      value={catalogFilterForm.condition}
+                      onChange={(event) =>
+                        setCatalogFilterForm((current) => ({
+                          ...current,
+                          condition: event.target.value as CatalogFilterForm["condition"]
+                        }))
+                      }
+                    >
+                      <option value="">Any condition</option>
+                      <option value="NEW">New</option>
+                      <option value="USED">Used</option>
+                      <option value="HIGHLY_DAMAGED">Highly damaged</option>
+                    </select>
                   </label>
                 </div>
 
@@ -701,7 +772,7 @@ export function Dashboard() {
 
               {isAuctioneer ? (
                 <SectionCard title="Post A Listing" subtitle="Seller Tools">
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <input
                       className="field-input"
                       placeholder="Listing ID"
@@ -720,17 +791,31 @@ export function Dashboard() {
                     />
                     <input
                       className="field-input"
-                      placeholder="Opening bid"
                       type="number"
-                      value={itemPayload.startingPrice}
+                      min={0.5}
+                      step={0.01}
+                      placeholder="Price ($)"
+                      value={itemPriceInput}
+                      onChange={(event) => setItemPriceInput(event.target.value)}
+                    />
+                    <select
+                      className="field-input"
+                      value={itemPayload.condition}
                       onChange={(event) =>
                         setItemPayload((current) => ({
                           ...current,
-                          startingPrice: Number(event.target.value)
+                          condition: event.target.value as ItemCondition
                         }))
                       }
-                    />
+                    >
+                      <option value="NEW">New</option>
+                      <option value="USED">Used</option>
+                      <option value="HIGHLY_DAMAGED">Highly Damaged</option>
+                    </select>
                   </div>
+                  {listingPriceError ? (
+                    <p className="mt-2 text-sm font-medium text-red-600">{listingPriceError}</p>
+                  ) : null}
                   <label className="field-label mt-3">
                     Description
                     <textarea
@@ -745,19 +830,7 @@ export function Dashboard() {
                   <button
                     type="button"
                     className="primary-button button-tide mt-4"
-                    onClick={() =>
-                      runAction("Posting listing", () => api.listItem(accessToken, itemPayload), (response) => {
-                        if (!response.ok || !currentUser || !itemPayload.itemId) {
-                          return;
-                        }
-                        const item = toKnownItem(itemPayload, currentUser);
-                        setCatalogItems((current) => mergeItems(current, [item]));
-                        rememberItems([item]);
-                        setSelectedItemId(item.itemId);
-                        setItemPayload({ itemId: "", itemName: "", startingPrice: 0, description: "" });
-                        setReloadKey((current) => current + 1);
-                      })
-                    }
+                    onClick={submitListing}
                   >
                     Post listing
                   </button>

@@ -27,11 +27,14 @@ export type Auctioneer = {
   name: string | null;
 };
 
+export type ItemCondition = "NEW" | "USED" | "HIGHLY_DAMAGED";
+
 export type BidItem = {
   itemId: string;
   itemName: string | null;
   startingPrice: number | null;
   description: string | null;
+  condition: ItemCondition | null;
   auctioneer?: Auctioneer | null;
 };
 
@@ -40,6 +43,7 @@ export type ListItemPayload = {
   itemName: string;
   startingPrice: number;
   description: string;
+  condition: ItemCondition;
 };
 
 export type PlaceBidPayload = {
@@ -60,6 +64,7 @@ export type ItemSearchFilters = {
   auctioneerId?: string;
   minPrice?: number;
   maxPrice?: number;
+  condition?: ItemCondition;
 };
 
 export type ActiveBidSummary = {
@@ -67,6 +72,7 @@ export type ActiveBidSummary = {
   itemName: string | null;
   description: string | null;
   startingPrice: number | null;
+  condition: ItemCondition | null;
   auctioneerId: string | null;
   auctioneerName: string | null;
   highestBidderId: string | null;
@@ -81,6 +87,7 @@ export type BidHistorySummary = {
   itemName: string | null;
   description: string | null;
   startingPrice: number | null;
+  condition: ItemCondition | null;
   auctioneerId: string | null;
   auctioneerName: string | null;
   highestBidderId: string | null;
