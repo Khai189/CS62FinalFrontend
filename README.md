@@ -2,6 +2,10 @@
 
 This repository is the standalone Next.js + TypeScript + Tailwind frontend for the 5CBid marketplace. It gives students a real marketplace-style interface for signing up, signing in, browsing active listings, posting items, placing bids, checking the current top bid, and viewing recommendation/feed results from the Java backend. In practice, the app opens to a campus-market hero page, then lets buyers and sellers move through those flows from one screen.
 
+## LLM Usage:
+
+This project was heavily developed with Codex due to specific Next.js and TypeScript patterns that were difficult to get down fast, especially for the really complex business logic we needed. A lot of the prompts were for API calls/responses, specific page routing, and component cards that needed to be developed fast.
+
 ## How To Run The Code
 
 1. Make sure Node.js and npm are installed.
