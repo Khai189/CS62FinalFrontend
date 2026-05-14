@@ -29,8 +29,6 @@ NEXT_PUBLIC_BACKEND_DISPLAY_URL=http://localhost:8080
 
 ## External Libraries
 
-This project does not use a `/lib` folder of committed `.jar` files because it is a JavaScript/TypeScript app managed by npm.
-
 Main frontend libraries:
 
 - Next.js
@@ -44,10 +42,6 @@ Install them with:
 ```bash
 npm install
 ```
-
-## What The Frontend Exposes
-
-The frontend does not expose a public REST API of its own. Its public-facing "API" is the exported helper methods and components that drive the user interface.
 
 ## Public Methods And Usage Examples
 
