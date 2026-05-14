@@ -1,5 +1,11 @@
 import type { BidItem } from "@/lib/types";
 
+/**
+ * Formats a bid item's condition string for display within the grid.
+ * 
+ * * @param {BidItem["condition"]} condition - the raw condition string from the bid item
+ * @returns {string} the formatted condition string with spaces, or a fallback if unavailable
+ */
 function conditionLabel(condition: BidItem["condition"]) {
   return condition ? condition.replaceAll("_", " ") : "Condition unavailable";
 }
@@ -14,6 +20,19 @@ type ItemGridProps = {
   onSelect?: (item: BidItem) => void;
 };
 
+/**
+ * Renders a responsive grid of marketplace items.
+ * 
+ * * @param {ItemGridProps} props - the component props
+ * @param {string} props.title - the main heading for the grid section
+ * @param {string} props.subtitle - the secondary eyebrow text displayed above the title
+ * @param {BidItem[]} props.items - the list of bid items to display in the grid
+ * @param {string} props.emptyMessage - the message to show when the items array is empty
+ * @param {string} [props.selectedItemId] - the ID of the currently selected item to highlight it visually
+ * @param {boolean} [props.showBidStats=false] - whether to display additional bidding metadata (highest bid, bidder ID, bid count)
+ * @param {(item: BidItem) => void} [props.onSelect] - optional callback triggered when an item card is clicked
+ * @returns {JSX.Element} the rendered ItemGrid component
+ */
 export function ItemGrid({
   title,
   subtitle,
