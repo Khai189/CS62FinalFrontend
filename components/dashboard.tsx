@@ -403,7 +403,7 @@ export function Dashboard() {
           <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <h1 className="max-w-4xl text-4xl text-ink md:text-6xl">
-                Buy and sell around the 5Cs without the awkward spreadsheet scramble.
+                The One and Only 5C Bidding Auction: Sell Your Stuff and Get Real Money
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate md:text-lg">
                 5CBid is a campus marketplace for auction-style listings. Students can post items,
