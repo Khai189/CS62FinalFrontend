@@ -47,8 +47,6 @@ function toKnownItem(payload: ListItemPayload, user: AuthUser): BidItem {
 }
 
 export function Dashboard() {
-  const backendDisplayUrl = process.env.NEXT_PUBLIC_BACKEND_DISPLAY_URL ?? "http://localhost:8080";
-
   const [session, setSession] = useState<AuthSession | null>(null);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [loginForm, setLoginForm] = useState<Credentials>({ username: "", password: "" });
@@ -67,11 +65,6 @@ export function Dashboard() {
 
   const [selectedItemId, setSelectedItemId] = useState("");
   const [totalRecs, setTotalRecs] = useState(4);
-
-  const [bidderId, setBidderId] = useState("");
-  const [bidderName, setBidderName] = useState("");
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [maxPriceFilter, setMaxPriceFilter] = useState<number | "">("");
   const [itemPayload, setItemPayload] = useState<ListItemPayload>({
     itemId: "",
     itemName: "",
@@ -84,7 +77,7 @@ export function Dashboard() {
   const [loadingLabel, setLoadingLabel] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<"neutral" | "success" | "error">("neutral");
   const [statusMessage, setStatusMessage] = useState(
-    "Create an account or log in to browse the marketplace and use the bidding tools."
+    "Create an account to browse live student listings, place bids, or post something of your own."
   );
 
   const currentUser = session?.user ?? null;
@@ -95,9 +88,9 @@ export function Dashboard() {
 
   const authSummary = useMemo(() => {
     if (!accessToken) {
-      return "Not signed in";
+      return "Guest browsing mode";
     }
-    return `Bearer ${accessToken.slice(0, 18)}...`;
+    return `Signed in with secure access`;
   }, [accessToken]);
 
   function persistSession(nextSession: AuthSession) {
@@ -113,40 +106,6 @@ export function Dashboard() {
     setRecommendedItems([]);
     setSelectedItemId("");
     setHighestBidText("");
-  const authSummary = useMemo(
-    () => `${credentials.username}:${"*".repeat(Math.max(credentials.password.length, 1))}`,
-    [credentials]
-  );
-
-  const filteredFeed = useMemo(() => {
-    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
-
-    return feedItems.filter((item) => {
-      const itemName = item.itemName?.toLowerCase() ?? "";
-      const startingPrice = item.startingPrice ?? 0;
-
-      const matchesSearch =
-        normalizedSearchTerm === "" || itemName.includes(normalizedSearchTerm);
-      const matchesPrice = maxPriceFilter === "" || startingPrice <= maxPriceFilter;
-      return matchesSearch && matchesPrice;
-    });
-  }, [feedItems, searchTerm, maxPriceFilter]);
-
-  function rememberBidders(incoming: Bidder[]) {
-    setBidders((current) => {
-      const merged = mergeBidders(current, incoming);
-      const firstBidder = merged[0];
-      if (firstBidder) {
-        setSelectedBidderId((currentId) => currentId || firstBidder.bidderId);
-        setLookupBidderId((currentId) => currentId || firstBidder.bidderId);
-        setBidPayload((currentBid) => ({
-          ...currentBid,
-          bidderId: currentBid.bidderId || firstBidder.bidderId
-        }));
-        setRemoveBidderId((currentId) => currentId || firstBidder.bidderId);
-      }
-      return merged;
-    });
   }
 
   function rememberItems(incoming: BidItem[]) {
@@ -205,7 +164,7 @@ export function Dashboard() {
           setSession(restoredSession);
           persistSession(restoredSession);
           setStatusTone("neutral");
-          setStatusMessage("Welcome back. Your JWT session was restored.");
+          setStatusMessage("Welcome back. Your account is ready and the market is open.");
         } else {
           window.localStorage.removeItem(SESSION_STORAGE_KEY);
         }
@@ -238,11 +197,11 @@ export function Dashboard() {
         setCatalogItems(response.data);
         rememberItems(response.data);
         setStatusTone("neutral");
-        setStatusMessage("Connected. Browse the marketplace and use the tools for your account role.");
-      } else if (!cancelled) {
+        setStatusMessage("Browse open listings, jump into a bidding war, or post your own item for sale.");
+      } else {
         setCatalogItems([]);
         setStatusTone("error");
-        setStatusMessage(response.raw || "Could not load marketplace items.");
+        setStatusMessage(response.raw || "We could not load the marketplace right now.");
       }
     }
 
@@ -335,34 +294,34 @@ export function Dashboard() {
           <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <h1 className="max-w-4xl text-4xl text-ink md:text-6xl">
-                Bid, sell, and discover the next item worth chasing.
+                Buy and sell around the 5Cs without the awkward spreadsheet scramble.
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate md:text-lg">
-                Sign up as a bidder or auctioneer, browse live marketplace items, place bids,
-                list products for sale, and get recommendation results from the Spring backend at {backendDisplayUrl}.
+                5CBid is a campus marketplace for auction-style listings. Students can post items,
+                place bids, and get suggestions based on what they have been interested in already.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <span className="hero-chip">JWT auth</span>
-                <span className="hero-chip">Live marketplace</span>
-                <span className="hero-chip">Recommendation feed</span>
+                <span className="hero-chip">Student listings</span>
+                <span className="hero-chip">Live bids</span>
+                <span className="hero-chip">Personalized suggestions</span>
               </div>
             </div>
             <div className="glass-tile max-w-sm px-5 py-4 text-sm text-slate">
-              <p className="section-eyebrow mb-3">Session</p>
+              <p className="section-eyebrow mb-3">Market Status</p>
               <div className="grid gap-2">
-                <p>Token: {authSummary}</p>
-                <p>User: {currentUser ? `${currentUser.displayName} (${currentUser.role})` : "Guest"}</p>
-                <p>{loadingLabel ? `Working: ${loadingLabel}` : "Ready"}</p>
+                <p>{authSummary}</p>
+                <p>{currentUser ? `${currentUser.displayName} is signed in as ${currentUser.role.toLowerCase()}` : "No one is signed in yet"}</p>
+                <p>{loadingLabel ? `Working on: ${loadingLabel}` : "Ready for browsing"}</p>
               </div>
             </div>
           </div>
         </div>
 
         <div className="grid gap-6">
-          <StatusBanner title="Site Status" body={statusMessage} tone={statusTone} />
+          <StatusBanner title="Marketplace Update" body={statusMessage} tone={statusTone} />
 
           {!currentUser || !accessToken ? (
-            <SectionCard title="Access Your Account" subtitle="JWT Login Or Signup">
+            <SectionCard title="Join the Marketplace" subtitle="Sign In Or Create An Account">
               <div className="mb-5 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -371,7 +330,7 @@ export function Dashboard() {
                   }`}
                   onClick={() => setAuthMode("login")}
                 >
-                  Log in
+                  Sign in
                 </button>
                 <button
                   type="button"
@@ -411,17 +370,17 @@ export function Dashboard() {
                     type="button"
                     className="primary-button button-ink w-fit"
                     onClick={() =>
-                      runAction("Log in", () => api.login(loginForm), (response) => {
+                      runAction("Signing in", () => api.login(loginForm), (response) => {
                         if (!response.data) {
                           return;
                         }
                         setSession(response.data);
                         persistSession(response.data);
-                        setStatusMessage(`Signed in as ${response.data.user.displayName}.`);
+                        setStatusMessage(`Welcome back, ${response.data.user.displayName}.`);
                       })
                     }
                   >
-                    Log in
+                    Sign in
                   </button>
                 </div>
               ) : (
@@ -480,8 +439,8 @@ export function Dashboard() {
                         }))
                       }
                     >
-                      <option value="BIDDER">Bidder</option>
-                      <option value="AUCTIONEER">Auctioneer</option>
+                      <option value="BIDDER">Buyer / bidder</option>
+                      <option value="AUCTIONEER">Seller / auctioneer</option>
                     </select>
                   </label>
                   <div className="md:col-span-2">
@@ -489,16 +448,12 @@ export function Dashboard() {
                       type="button"
                       className="primary-button button-tide w-fit"
                       onClick={() =>
-                        runAction("Create account", () => api.register(signupForm), (response) => {
+                        runAction("Creating account", () => api.register(signupForm), (response) => {
                           if (!response.data) {
                             return;
                           }
                           setSession(response.data);
                           persistSession(response.data);
-                          setLoginForm({
-                            username: signupForm.username,
-                            password: ""
-                          });
                           setStatusMessage(`Welcome to 5CBid, ${response.data.user.displayName}.`);
                         })
                       }
@@ -511,14 +466,14 @@ export function Dashboard() {
             </SectionCard>
           ) : (
             <>
-              <SectionCard title="Your Session" subtitle="JWT Profile">
+              <SectionCard title="Your Account" subtitle="Marketplace Profile">
                 <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
                   <div className="grid gap-2 text-sm text-slate">
                     <p>Signed in as {currentUser.displayName}</p>
                     <p>Username: {currentUser.username}</p>
-                    <p>Role: {currentUser.role}</p>
+                    <p>Account type: {currentUser.role}</p>
                     <p>Email: {currentUser.email}</p>
-                    <p>Profile ID: {currentUser.profileId ?? "No bidder or auctioneer profile"}</p>
+                    <p>Profile ID: {currentUser.profileId ?? "No active marketplace profile"}</p>
                   </div>
                   <button
                     type="button"
@@ -526,128 +481,38 @@ export function Dashboard() {
                     onClick={() => {
                       clearSession();
                       setStatusTone("neutral");
-                      setStatusMessage("You signed out. Log back in or create another account.");
+                      setStatusMessage("You signed out. Come back when you are ready to browse again.");
                     }}
                   >
-                    Log out
+                    Sign out
                   </button>
                 </div>
               </SectionCard>
 
-          {/* Marketplace with Filters */}
-          <SectionCard
-            title="Marketplace"
-            subtitle="Live catalog of active items."
-          >
-            {/* Filter Controls */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="flex-1">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Search Item Type/Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Textbook, Laptop..."
-                  className="w-full rounded-lg border-slate-300 px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Max Price ($)
-                </label>
-                <input
-                  type="number"
-                  placeholder="Any price"
-                  className="w-full rounded-lg border-slate-300 px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                  value={maxPriceFilter}
-                  onChange={(e) => setMaxPriceFilter(e.target.value ? Number(e.target.value) : "")}
-                />
-              </div>
-              <div className="flex items-end">
-                <button
-                  onClick={() => {
-                    setSearchTerm("");
-                    setMaxPriceFilter("");
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
-                >
-                  Clear Filters
-                </button>
-              </div>
-            </div>
-
-            {filteredFeed.length === 0 ? (
-              <p className="text-sm text-slate-500 italic">
-                No items match your current filters or the marketplace is empty.
-              </p>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredFeed.map((item) => (
-                  <div
-                    key={item.itemId}
-                    className={`rounded-2xl border border-[color:var(--line)] bg-white/80 p-4 py-3 text-ink shadow-sm transition-all ${
-                      selectedItemId === item.itemId ? 'ring-2 ring-blue-500' : ''
-                    }`}
-                    onClick={() => setSelectedItemId(item.itemId)}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-bold text-lg">{item.itemName}</h3>
-                      <span className="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-                        ${item.startingPrice}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mb-1">ID: {item.itemId}</p>
-                    <p className="text-xs text-slate-500">Auctioneer: {item.auctioneer?.auctioneerId || 'Unknown'}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </SectionCard>
+              <ItemGrid
+                title="Open Listings"
+                subtitle="Campus Marketplace"
+                items={catalogItems}
+                selectedItemId={selectedItemId}
+                emptyMessage="No listings are live yet. A seller can post the first item."
+                onSelect={handleSelectItem}
+              />
 
               {isBidder ? (
                 <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-            <div className="grid gap-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="grid gap-2 text-sm text-slate">
-                  Search feed
-                  <input
-                    className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
-                    placeholder="Search by name"
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
+                  <ItemGrid
+                    title="Picked For You"
+                    subtitle="Your Feed"
+                    items={feedItems}
+                    selectedItemId={selectedItemId}
+                    emptyMessage="Your feed is quiet right now. Bid on a few items and this section will learn your taste."
+                    onSelect={handleSelectItem}
                   />
-                </label>
-                <label className="grid gap-2 text-sm text-slate">
-                  Max price
-                  <input
-                    className="rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-3 text-ink"
-                    placeholder="No max"
-                    type="number"
-                    min={0}
-                    value={maxPriceFilter}
-                    onChange={(event) =>
-                      setMaxPriceFilter(event.target.value === "" ? "" : Number(event.target.value))
-                    }
-                  />
-                </label>
-              </div>
 
-                    <ItemGrid
-                      title="Your Feed"
-                      subtitle="For You"
-                      items={filteredFeed}
-                      selectedItemId={selectedItemId}
-                      emptyMessage="Your feed is empty right now. Start bidding and come back for more signal."
-                      onSelect={handleSelectItem}
-                    />
-            </div>
-
-                  <SectionCard title="Recommendations" subtitle="Because You Bid">
+                  <SectionCard title="You Might Also Like" subtitle="Recommendations">
                     <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
                       <label className="field-label">
-                        Anchor item ID
+                        Start from this listing
                         <input
                           className="field-input"
                           list="item-id-options"
@@ -656,7 +521,7 @@ export function Dashboard() {
                         />
                       </label>
                       <label className="field-label">
-                        Total recs
+                        Number of suggestions
                         <input
                           className="field-input"
                           type="number"
@@ -669,33 +534,33 @@ export function Dashboard() {
 
                     <div className="mt-5">
                       <ItemGrid
-                        title="Recommended Next"
-                        subtitle="Personalized"
+                        title="Related Listings"
+                        subtitle="Based On Your Activity"
                         items={recommendedItems}
                         selectedItemId={selectedItemId}
-                        emptyMessage="Choose an item from the marketplace or feed to load recommendations."
+                        emptyMessage="Pick a listing from the market or your feed to load suggestions."
                         onSelect={handleSelectItem}
                       />
                     </div>
                   </SectionCard>
                 </div>
               ) : (
-                <SectionCard title="Recommendations And Feed" subtitle="Bidder Features">
+                <SectionCard title="Recommendations" subtitle="Buyer Feature">
                   <p className="text-sm leading-7 text-slate">
-                    Personalized feeds and recommendation results are currently bidder-only features.
-                    Create a bidder account if you want the site to tailor items to your bidding history.
+                    Personalized suggestions are built for bidder accounts. If you want the site to
+                    learn what you like, create a buyer account and start bidding.
                   </p>
                 </SectionCard>
               )}
 
               <div className="grid gap-6 xl:grid-cols-2">
-                <SectionCard title="Sell an Item" subtitle="Auctioneer">
+                <SectionCard title="Post A Listing" subtitle="Seller Tools">
                   {isAuctioneer ? (
                     <>
                       <div className="grid gap-3">
                         <input
                           className="field-input"
-                          placeholder="Item ID"
+                          placeholder="Listing ID"
                           value={itemPayload.itemId}
                           onChange={(event) =>
                             setItemPayload((current) => ({ ...current, itemId: event.target.value }))
@@ -703,7 +568,7 @@ export function Dashboard() {
                         />
                         <input
                           className="field-input"
-                          placeholder="Item name"
+                          placeholder="Listing title"
                           value={itemPayload.itemName}
                           onChange={(event) =>
                             setItemPayload((current) => ({ ...current, itemName: event.target.value }))
@@ -711,7 +576,7 @@ export function Dashboard() {
                         />
                         <input
                           className="field-input"
-                          placeholder="Starting price"
+                          placeholder="Opening bid"
                           type="number"
                           value={itemPayload.startingPrice}
                           onChange={(event) =>
@@ -726,7 +591,7 @@ export function Dashboard() {
                         type="button"
                         className="primary-button button-tide mt-4"
                         onClick={() =>
-                          runAction("List item", () => api.listItem(accessToken, itemPayload), (response) => {
+                          runAction("Posting listing", () => api.listItem(accessToken, itemPayload), (response) => {
                             if (!response.ok || !currentUser || !itemPayload.itemId) {
                               return;
                             }
@@ -739,35 +604,34 @@ export function Dashboard() {
                           })
                         }
                       >
-                        List item
+                        Post listing
                       </button>
                     </>
                   ) : (
                     <p className="text-sm leading-7 text-slate">
-                      Only auctioneer accounts can create listings. If you want to sell items, sign up as an auctioneer.
+                      Only seller accounts can post listings. If you want to sell something around the 5Cs,
+                      create an auctioneer account.
                     </p>
                   )}
                 </SectionCard>
 
-                <SectionCard title="Bid on an Item" subtitle="Bidder">
+                <SectionCard title="Place A Bid" subtitle="Buyer Tools">
                   {isBidder ? (
                     <>
                       <div className="grid gap-3">
                         <input
                           className="field-input"
                           list="item-id-options"
-                          placeholder="Item ID"
+                          placeholder="Listing ID"
                           value={selectedItemId}
                           onChange={(event) => setSelectedItemId(event.target.value)}
                         />
                         <input
                           className="field-input"
-                          placeholder="Bid amount"
+                          placeholder="Your bid"
                           type="number"
                           value={bidPayload.amount}
-                          onChange={(event) =>
-                            setBidPayload({ amount: Number(event.target.value) })
-                          }
+                          onChange={(event) => setBidPayload({ amount: Number(event.target.value) })}
                         />
                       </div>
                       <div className="mt-4 flex flex-wrap gap-3">
@@ -775,7 +639,7 @@ export function Dashboard() {
                           type="button"
                           className="primary-button button-moss"
                           onClick={() =>
-                            runAction("Place bid", () => api.placeBid(accessToken, selectedItemId, bidPayload), () => {
+                            runAction("Placing bid", () => api.placeBid(accessToken, selectedItemId, bidPayload), () => {
                               setReloadKey((current) => current + 1);
                             })
                           }
@@ -786,18 +650,18 @@ export function Dashboard() {
                           type="button"
                           className="primary-button button-ink"
                           onClick={() =>
-                            runAction("Check highest bid", () => api.getHighestBid(accessToken, selectedItemId), (response) => {
+                            runAction("Checking top bid", () => api.getHighestBid(accessToken, selectedItemId), (response) => {
                               setHighestBidText(response.raw);
                             })
                           }
                         >
-                          Check highest bid
+                          View top bid
                         </button>
                         <button
                           type="button"
                           className="primary-button button-ember"
                           onClick={() =>
-                            runAction("Remove bid", () => api.removeBid(accessToken, selectedItemId), () => {
+                            runAction("Removing bid", () => api.removeBid(accessToken, selectedItemId), () => {
                               setReloadKey((current) => current + 1);
                             })
                           }
@@ -813,7 +677,7 @@ export function Dashboard() {
                     </>
                   ) : (
                     <p className="text-sm leading-7 text-slate">
-                      Only bidder accounts can place or remove bids. Switch to a bidder account to use these actions.
+                      Only buyer accounts can place or remove bids. Switch to a bidder account to join the auction.
                     </p>
                   )}
                 </SectionCard>

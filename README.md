@@ -1,45 +1,265 @@
-# Frontend
+# 5CBid Frontend
 
-This folder is a standalone Next.js + TypeScript + Tailwind frontend for the Java backend in `../CS62FinalProject/demo`.
+This repository is the standalone Next.js + TypeScript + Tailwind frontend for the 5CBid marketplace. It gives students a real marketplace-style interface for signing up, signing in, browsing active listings, posting items, placing bids, checking the current top bid, and viewing recommendation/feed results from the Java backend. In practice, the app opens to a campus-market hero page, then lets buyers and sellers move through those flows from one screen.
 
-## Why it is separate
+## How To Run The Code
 
-`frontend/` lives at the repo root, outside the Java project, so you can move it into its own repository and deploy it independently.
+1. Make sure Node.js and npm are installed.
+2. Make sure the backend is already running.
+3. Copy `.env.example` to `.env.local`.
+4. Set the backend URL variables.
+5. Install dependencies and start the dev server.
 
-## Covered backend endpoints
+```bash
+cp .env.example .env.local
+npm install
+npm run dev
+```
 
-- `GET /items/all`
-- `GET /bidders/all`
-- `GET /bidders/{bidderId}`
-- `POST /bidders/add/{bidderId}/{name}`
-- `POST /bid/list`
-- `POST /bid/{itemId}`
-- `GET /bid/{itemId}/highest`
-- `DELETE /bid/{itemId}/{bidderId}`
-- `GET /rec/{bidderId}/{itemId}/{totalRecs}`
-- `GET /feed/{bidderId}`
+Recommended `.env.local`:
 
-## Local setup
+```env
+BACKEND_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_BACKEND_DISPLAY_URL=http://localhost:8080
+```
 
-1. Copy `.env.example` to `.env.local`
-2. Set `BACKEND_API_BASE_URL=http://localhost:8080`
-3. Optionally set `NEXT_PUBLIC_BACKEND_DISPLAY_URL=http://localhost:8080`
-4. Make sure the backend is running against Postgres
-5. Install dependencies with `npm install`
-6. Start the app with `npm run dev`
+## External Libraries
 
-## Auth
+This project does not use a `/lib` folder of committed `.jar` files because it is a JavaScript/TypeScript app managed by npm.
 
-The current backend uses HTTP Basic auth. The browser calls the Next.js `/api/backend/*` proxy, and that proxy forwards the `Authorization` header to Spring. The UI includes presets for:
+Main frontend libraries:
 
-- `admin / admin`
-- `auctioneer / auctioneer`
-- `bidder / bidder`
+- Next.js
+- React
+- Tailwind CSS
+- TypeScript
 
-## Deployment note
+Install them with:
 
-Before deploying this frontend to Vercel or another domain:
+```bash
+npm install
+```
 
-- set `BACKEND_API_BASE_URL` to the deployed Spring backend URL
-- set `APP_SECURITY_ALLOWED_ORIGINS` on the backend if you still want direct browser access from trusted origins
-- keep the frontend proxy in place to avoid most browser CORS friction
+## What The Frontend Exposes
+
+The frontend does not expose a public REST API of its own. Its public-facing "API" is the exported helper methods and components that drive the user interface.
+
+## Public Methods And Usage Examples
+
+### `api.register(payload)`
+
+- File: `lib/api.ts`
+- Input: `RegisterPayload`
+- Output: `Promise<ApiResponse<AuthSession>>`
+- Description: Sends signup data to the backend and returns a JWT session when the account is created.
+
+Example:
+
+```ts
+await api.register({
+  username: "maya123",
+  email: "maya@students.pomona.edu",
+  password: "secret123",
+  displayName: "Maya",
+  role: "BIDDER"
+});
+```
+
+### `api.login(credentials)`
+
+- Input: `Credentials`
+- Output: `Promise<ApiResponse<AuthSession>>`
+- Description: Signs in a user and returns a session token plus user profile.
+
+Example:
+
+```ts
+await api.login({ username: "maya123", password: "secret123" });
+```
+
+### `api.getMe(accessToken)`
+
+- Input: JWT access token
+- Output: `Promise<ApiResponse<AuthUser>>`
+- Description: Loads the currently signed-in user.
+
+Example:
+
+```ts
+await api.getMe(token);
+```
+
+### `api.getAllItems(accessToken)`
+
+- Input: JWT access token
+- Output: `Promise<ApiResponse<BidItem[]>>`
+- Description: Loads all active marketplace listings.
+
+Example:
+
+```ts
+await api.getAllItems(token);
+```
+
+### `api.listItem(accessToken, payload)`
+
+- Input: JWT access token and `ListItemPayload`
+- Output: `Promise<ApiResponse<string>>`
+- Description: Posts a new listing as a seller.
+
+Example:
+
+```ts
+await api.listItem(token, {
+  itemId: "lamp-101",
+  itemName: "Desk Lamp",
+  startingPrice: 15
+});
+```
+
+### `api.placeBid(accessToken, itemId, payload)`
+
+- Input: JWT access token, item ID, and `PlaceBidPayload`
+- Output: `Promise<ApiResponse<string>>`
+- Description: Places a new bid on a listing.
+
+Example:
+
+```ts
+await api.placeBid(token, "lamp-101", { amount: 22 });
+```
+
+### `api.getHighestBid(accessToken, itemId)`
+
+- Input: JWT access token and item ID
+- Output: `Promise<ApiResponse<string>>`
+- Description: Loads the current top bid for one listing.
+
+Example:
+
+```ts
+await api.getHighestBid(token, "lamp-101");
+```
+
+### `api.removeBid(accessToken, itemId)`
+
+- Input: JWT access token and item ID
+- Output: `Promise<ApiResponse<string>>`
+- Description: Removes the signed-in bidder's active bid.
+
+Example:
+
+```ts
+await api.removeBid(token, "lamp-101");
+```
+
+### `api.getRecommendations(accessToken, bidderId, itemId, totalRecs)`
+
+- Input: JWT access token, bidder ID, item ID, recommendation count
+- Output: `Promise<ApiResponse<BidItem[]>>`
+- Description: Loads suggested listings related to one anchor item.
+
+Example:
+
+```ts
+await api.getRecommendations(token, "maya123", "lamp-101", 3);
+```
+
+### `api.getFeed(accessToken, bidderId)`
+
+- Input: JWT access token and bidder ID
+- Output: `Promise<ApiResponse<BidItem[]>>`
+- Description: Loads the personalized feed for one bidder.
+
+Example:
+
+```ts
+await api.getFeed(token, "maya123");
+```
+
+## Public Components And Constructors
+
+React components are used as the main public UI building blocks.
+
+### `Dashboard()`
+
+- File: `components/dashboard.tsx`
+- Inputs: none directly; it manages local session and marketplace state
+- Output: rendered marketplace page
+- Description: main top-level screen for auth, listings, bids, seller tools, and recommendations
+
+Usage example:
+
+```tsx
+<Dashboard />
+```
+
+### `ItemGrid(props)`
+
+- File: `components/item-grid.tsx`
+- Inputs:
+  - `title`
+  - `subtitle`
+  - `items`
+  - `emptyMessage`
+  - optional `selectedItemId`
+  - optional `onSelect`
+- Output: rendered list/grid of listing cards
+
+Usage example:
+
+```tsx
+<ItemGrid
+  title="Open Listings"
+  subtitle="Campus Marketplace"
+  items={items}
+  emptyMessage="No items yet."
+/>
+```
+
+### `SectionCard(props)`
+
+- File: `components/section-card.tsx`
+- Inputs: `title`, `subtitle`, `children`
+- Output: styled content section
+
+Usage example:
+
+```tsx
+<SectionCard title="Your Account" subtitle="Profile">
+  <p>Signed in as Maya</p>
+</SectionCard>
+```
+
+### `StatusBanner(props)`
+
+- File: `components/status-banner.tsx`
+- Inputs: `title`, `body`, optional `tone`
+- Output: styled status message
+
+Usage example:
+
+```tsx
+<StatusBanner title="Marketplace Update" body="Listing posted." tone="success" />
+```
+
+## Backend Connection Notes
+
+This frontend talks to the backend through the Next.js proxy route:
+
+- `app/api/backend/[...path]/route.ts`
+
+That route forwards requests to `BACKEND_API_BASE_URL` and passes through the JWT bearer token.
+
+## Production Deployment
+
+For Vercel:
+
+- set `BACKEND_API_BASE_URL=https://your-api.up.railway.app`
+- set `NEXT_PUBLIC_BACKEND_DISPLAY_URL=https://your-api.up.railway.app`
+
+## Build Command
+
+```bash
+npm run build
+```
