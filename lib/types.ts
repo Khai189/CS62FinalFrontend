@@ -36,6 +36,9 @@ export type BidItem = {
   description: string | null;
   condition: ItemCondition | null;
   auctioneer?: Auctioneer | null;
+  highestBidderId?: string | null;
+  highestBidAmount?: number | null;
+  bidCount?: number | null;
 };
 
 export type ListItemPayload = {

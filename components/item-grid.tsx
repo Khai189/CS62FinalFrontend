@@ -10,6 +10,7 @@ type ItemGridProps = {
   items: BidItem[];
   emptyMessage: string;
   selectedItemId?: string;
+  showBidStats?: boolean;
   onSelect?: (item: BidItem) => void;
 };
 
@@ -19,6 +20,7 @@ export function ItemGrid({
   items,
   emptyMessage,
   selectedItemId,
+  showBidStats = false,
   onSelect
 }: ItemGridProps) {
   return (
@@ -75,6 +77,26 @@ export function ItemGrid({
                 <div className="mt-4 text-sm leading-6 text-slate">
                   {item.description ? <p>{item.description}</p> : <p>No description available yet.</p>}
                 </div>
+                {showBidStats ? (
+                  <div className="mt-4 grid gap-2 text-sm leading-6 text-slate">
+                    <p>
+                      Current highest bid:{" "}
+                      <span className="font-semibold text-ink">
+                        {item.highestBidAmount != null ? `$${item.highestBidAmount}` : "No bids yet"}
+                      </span>
+                    </p>
+                    <p>
+                      Current highest bidder:{" "}
+                      <span className="font-semibold text-ink">
+                        {item.highestBidderId ?? "No bidder yet"}
+                      </span>
+                    </p>
+                    <p>
+                      Number of bids:{" "}
+                      <span className="font-semibold text-ink">{item.bidCount ?? 0}</span>
+                    </p>
+                  </div>
+                ) : null}
               </button>
             );
           })}

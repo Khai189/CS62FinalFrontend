@@ -15,6 +15,19 @@ import type {
 
 const FRONTEND_PROXY_BASE = "/api/backend";
 
+type ItemListingApi = {
+  itemId: string;
+  itemName: string | null;
+  startingPrice: number | null;
+  description: string | null;
+  condition: BidItem["condition"];
+  auctioneerId: string | null;
+  auctioneerName: string | null;
+  highestBidderId: string | null;
+  highestBidAmount: number | null;
+  bidCount: number | null;
+};
+
 async function request<T>(
   path: string,
   init?: RequestInit,
@@ -39,6 +52,25 @@ async function request<T>(
     status: response.status,
     data,
     raw
+  };
+}
+
+function normalizeItem(item: ItemListingApi): BidItem {
+  return {
+    itemId: item.itemId,
+    itemName: item.itemName,
+    startingPrice: item.startingPrice,
+    description: item.description,
+    condition: item.condition,
+    auctioneer: item.auctioneerId != null || item.auctioneerName != null
+      ? {
+          auctioneerId: item.auctioneerId ?? item.auctioneerName ?? "unknown-auctioneer",
+          name: item.auctioneerName
+        }
+      : null,
+    highestBidderId: item.highestBidderId,
+    highestBidAmount: item.highestBidAmount,
+    bidCount: item.bidCount
   };
 }
 
@@ -82,11 +114,19 @@ export const api = {
 
     const queryString = params.toString();
     const path = queryString ? `/items/all?${queryString}` : "/items/all";
-    return request<BidItem[]>(path, { method: "GET" }, accessToken);
+    return request<ItemListingApi[]>(path, { method: "GET" }, accessToken).then((response) => ({
+      ...response,
+      data: response.data ? response.data.map(normalizeItem) : null
+    }));
   },
 
   getItem(accessToken: string, itemId: string) {
-    return request<BidItem>(`/items/${encodeURIComponent(itemId)}`, { method: "GET" }, accessToken);
+    return request<ItemListingApi>(`/items/${encodeURIComponent(itemId)}`, { method: "GET" }, accessToken).then(
+      (response) => ({
+        ...response,
+        data: response.data ? normalizeItem(response.data) : null
+      })
+    );
   },
 
   listItem(accessToken: string, payload: ListItemPayload) {
