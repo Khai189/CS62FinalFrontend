@@ -76,6 +76,21 @@ export type ActiveBidSummary = {
   viewerOwnsListing: boolean;
 };
 
+export type BidHistorySummary = {
+  itemId: string;
+  itemName: string | null;
+  description: string | null;
+  startingPrice: number | null;
+  auctioneerId: string | null;
+  auctioneerName: string | null;
+  highestBidderId: string | null;
+  highestBidAmount: number | null;
+  viewerBidAmount: number | null;
+  lastBidAt: string | null;
+  totalBidCount: number | null;
+  viewerOwnsListing: boolean;
+};
+
 export type ApiResponse<T> = {
   ok: boolean;
   status: number;

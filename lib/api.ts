@@ -3,6 +3,7 @@ import type {
   ApiResponse,
   AuthSession,
   AuthUser,
+  BidHistorySummary,
   BidItem,
   Credentials,
   ItemSearchFilters,
@@ -112,6 +113,10 @@ export const api = {
 
   getActiveBids(accessToken: string) {
     return request<ActiveBidSummary[]>("/bid/active", { method: "GET" }, accessToken);
+  },
+
+  getBidHistory(accessToken: string) {
+    return request<BidHistorySummary[]>("/bid/history", { method: "GET" }, accessToken);
   },
 
   getRecommendations(accessToken: string, bidderId: string, itemId: string, totalRecs: number) {
