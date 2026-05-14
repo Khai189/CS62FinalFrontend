@@ -1,7 +1,40 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { BidItem } from "@/lib/types";
 
 function conditionLabel(condition: BidItem["condition"]) {
   return condition ? condition.replaceAll("_", " ") : "Condition unavailable";
+}
+
+function formatTimeRemaining(expiresAt: string | null | undefined, now: number) {
+  if (!expiresAt) {
+    return "Time remaining unavailable";
+  }
+  const target = new Date(expiresAt).getTime();
+  if (Number.isNaN(target)) {
+    return "Time remaining unavailable";
+  }
+  const diff = target - now;
+  if (diff <= 0) {
+    return "Expired";
+  }
+  const totalSeconds = Math.floor(diff / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m left`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s left`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s left`;
+  }
+  return `${seconds}s left`;
 }
 
 type ItemGridProps = {
@@ -23,6 +56,13 @@ export function ItemGrid({
   showBidStats = false,
   onSelect
 }: ItemGridProps) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <div className="surface-panel p-6">
       <div className="mb-4 flex items-end justify-between gap-4">
@@ -77,6 +117,9 @@ export function ItemGrid({
                 <div className="mt-4 text-sm leading-6 text-slate">
                   {item.description ? <p>{item.description}</p> : <p>No description available yet.</p>}
                 </div>
+                <p className="mt-4 text-sm font-medium text-tide">
+                  {formatTimeRemaining(item.expiresAt, now)}
+                </p>
                 {showBidStats ? (
                   <div className="mt-4 grid gap-2 text-sm leading-6 text-slate">
                     <p>

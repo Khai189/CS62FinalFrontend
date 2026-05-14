@@ -15,6 +15,7 @@ import type {
   Credentials,
   ItemCondition,
   ItemSearchFilters,
+  ListingDurationUnit,
   ListedItemResponse,
   ListItemPayload,
   RegisterPayload
@@ -58,6 +59,7 @@ function toKnownItem(payload: ListItemPayload, response: ListedItemResponse, use
     startingPrice: payload.startingPrice,
     description: payload.description || null,
     condition: payload.condition,
+    expiresAt: response.expiresAt,
     auctioneer: {
       auctioneerId: user.profileId ?? user.username,
       name: user.displayName
@@ -108,9 +110,12 @@ export function Dashboard() {
     itemName: "",
     startingPrice: 0.5,
     description: "",
-    condition: "NEW"
+    condition: "NEW",
+    durationAmount: 1,
+    durationUnit: "DAYS"
   });
   const [itemPriceInput, setItemPriceInput] = useState("");
+  const [listingDurationInput, setListingDurationInput] = useState("1");
   const [reloadKey, setReloadKey] = useState(0);
 
   const [loadingLabel, setLoadingLabel] = useState<string | null>(null);
@@ -158,6 +163,24 @@ export function Dashboard() {
     return null;
   }, [catalogFilterForm.maxPrice]);
 
+  const parsedDurationAmount = useMemo(() => {
+    if (!listingDurationInput.trim()) {
+      return undefined;
+    }
+    const parsed = Number(listingDurationInput);
+    return Number.isInteger(parsed) ? parsed : undefined;
+  }, [listingDurationInput]);
+
+  const listingDurationError = useMemo(() => {
+    if (!listingDurationInput.trim()) {
+      return "Listing duration must be 1 or greater";
+    }
+    if (parsedDurationAmount == null || parsedDurationAmount < 1) {
+      return "Listing duration must be 1 or greater";
+    }
+    return null;
+  }, [listingDurationInput, parsedDurationAmount]);
+
   function clearSessionState() {
     signOut();
     setCatalogItems([]);
@@ -166,6 +189,7 @@ export function Dashboard() {
     setRecommendedItems([]);
     setSelectedItemId("");
     setItemPriceInput("");
+    setListingDurationInput("1");
     setFeedSearch("");
     setCatalogFilterForm({
       query: "",
@@ -383,10 +407,16 @@ export function Dashboard() {
       setStatusMessage("Price must be equal to or above 50 cents");
       return;
     }
+    if (parsedDurationAmount == null || parsedDurationAmount < 1) {
+      setStatusTone("error");
+      setStatusMessage("Listing duration must be 1 or greater");
+      return;
+    }
 
     const payload: ListItemPayload = {
       ...itemPayload,
-      startingPrice: parsedListingPrice
+      startingPrice: parsedListingPrice,
+      durationAmount: parsedDurationAmount
     };
 
     void runAction("Posting listing", () => api.listItem(accessToken, payload), (response) => {
@@ -397,8 +427,16 @@ export function Dashboard() {
       setCatalogItems((current) => mergeItems(current, [item]));
       rememberItems([item]);
       setSelectedItemId(item.itemId);
-      setItemPayload({ itemName: "", startingPrice: 0.5, description: "", condition: "NEW" });
+      setItemPayload({
+        itemName: "",
+        startingPrice: 0.5,
+        description: "",
+        condition: "NEW",
+        durationAmount: 1,
+        durationUnit: "DAYS"
+      });
       setItemPriceInput("");
+      setListingDurationInput("1");
       setReloadKey((current) => current + 1);
     });
   }
@@ -806,7 +844,7 @@ export function Dashboard() {
 
               {isAuctioneer ? (
                 <SectionCard title="Post A Listing" subtitle="Seller Tools">
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                     <input
                       className="field-input"
                       placeholder="Listing title"
@@ -838,9 +876,36 @@ export function Dashboard() {
                       <option value="USED">Used</option>
                       <option value="HIGHLY_DAMAGED">Highly Damaged</option>
                     </select>
+                    <input
+                      className="field-input"
+                      type="number"
+                      min={1}
+                      step={1}
+                      placeholder="Active for"
+                      value={listingDurationInput}
+                      onChange={(event) => setListingDurationInput(event.target.value)}
+                    />
+                    <select
+                      className="field-input"
+                      value={itemPayload.durationUnit}
+                      onChange={(event) =>
+                        setItemPayload((current) => ({
+                          ...current,
+                          durationUnit: event.target.value as ListingDurationUnit
+                        }))
+                      }
+                    >
+                      <option value="HOURS">Hours</option>
+                      <option value="DAYS">Days</option>
+                      <option value="WEEKS">Weeks</option>
+                      <option value="MONTHS">Months</option>
+                    </select>
                   </div>
                   {listingPriceError ? (
                     <p className="mt-2 text-sm font-medium text-red-600">{listingPriceError}</p>
+                  ) : null}
+                  {listingDurationError ? (
+                    <p className="mt-2 text-sm font-medium text-red-600">{listingDurationError}</p>
                   ) : null}
                   <label className="field-label mt-3">
                     Description
