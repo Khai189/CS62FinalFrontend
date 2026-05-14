@@ -39,6 +39,7 @@ export type ListItemPayload = {
   itemId: string;
   itemName: string;
   startingPrice: number;
+  description: string;
 };
 
 export type PlaceBidPayload = {
@@ -52,6 +53,27 @@ export type RegisterPayload = {
   password: string;
   displayName: string;
   role: "BIDDER" | "AUCTIONEER";
+};
+
+export type ItemSearchFilters = {
+  query?: string;
+  auctioneerId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+};
+
+export type ActiveBidSummary = {
+  itemId: string;
+  itemName: string | null;
+  description: string | null;
+  startingPrice: number | null;
+  auctioneerId: string | null;
+  auctioneerName: string | null;
+  highestBidderId: string | null;
+  highestBidAmount: number | null;
+  viewerBidAmount: number | null;
+  viewerIsHighestBidder: boolean;
+  viewerOwnsListing: boolean;
 };
 
 export type ApiResponse<T> = {

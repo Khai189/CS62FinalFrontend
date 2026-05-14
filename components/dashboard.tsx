@@ -12,10 +12,18 @@ import type {
   AuthUser,
   BidItem,
   Credentials,
+  ItemSearchFilters,
   ListItemPayload,
   PlaceBidPayload,
   RegisterPayload
 } from "@/lib/types";
+
+type CatalogFilterForm = {
+  query: string;
+  auctioneerId: string;
+  minPrice: string;
+  maxPrice: string;
+};
 
 function mergeItems(current: BidItem[], incoming: BidItem[]) {
   const merged = new Map<string, BidItem>();
@@ -37,12 +45,20 @@ function toKnownItem(payload: ListItemPayload, user: AuthUser): BidItem {
     itemId: payload.itemId,
     itemName: payload.itemName,
     startingPrice: payload.startingPrice,
-    description: null,
+    description: payload.description || null,
     auctioneer: {
       auctioneerId: user.profileId ?? user.username,
       name: user.displayName
     }
   };
+}
+
+function parseNumber(value: string) {
+  if (!value.trim()) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? undefined : parsed;
 }
 
 export function Dashboard() {
@@ -64,13 +80,21 @@ export function Dashboard() {
   const [feedItems, setFeedItems] = useState<BidItem[]>([]);
   const [recommendedItems, setRecommendedItems] = useState<BidItem[]>([]);
 
+  const [catalogFilterForm, setCatalogFilterForm] = useState<CatalogFilterForm>({
+    query: "",
+    auctioneerId: "",
+    minPrice: "",
+    maxPrice: ""
+  });
+  const [catalogFilters, setCatalogFilters] = useState<ItemSearchFilters>({});
   const [selectedItemId, setSelectedItemId] = useState("");
   const [feedSearch, setFeedSearch] = useState("");
   const [totalRecs, setTotalRecs] = useState(4);
   const [itemPayload, setItemPayload] = useState<ListItemPayload>({
     itemId: "",
     itemName: "",
-    startingPrice: 0
+    startingPrice: 0,
+    description: ""
   });
   const [bidPayload, setBidPayload] = useState<PlaceBidPayload>({ amount: 0 });
   const [highestBidText, setHighestBidText] = useState("");
@@ -89,6 +113,15 @@ export function Dashboard() {
     return "Signed in and ready to trade";
   }, [accessToken]);
 
+  const hasCatalogFilters = useMemo(() => {
+    return Boolean(
+      catalogFilters.query ||
+        catalogFilters.auctioneerId ||
+        catalogFilters.minPrice != null ||
+        catalogFilters.maxPrice != null
+    );
+  }, [catalogFilters]);
+
   function clearSessionState() {
     signOut();
     setCatalogItems([]);
@@ -98,6 +131,13 @@ export function Dashboard() {
     setSelectedItemId("");
     setHighestBidText("");
     setFeedSearch("");
+    setCatalogFilterForm({
+      query: "",
+      auctioneerId: "",
+      minPrice: "",
+      maxPrice: ""
+    });
+    setCatalogFilters({});
   }
 
   function rememberItems(incoming: BidItem[]) {
@@ -144,7 +184,7 @@ export function Dashboard() {
     let cancelled = false;
 
     async function loadCatalog() {
-      const response = await api.getAllItems(token);
+      const response = await api.getAllItems(token, catalogFilters);
       if (cancelled) {
         return;
       }
@@ -153,7 +193,11 @@ export function Dashboard() {
         setCatalogItems(response.data);
         rememberItems(response.data);
         setStatusTone("neutral");
-        setStatusMessage("Browse open listings, jump into a bidding war, or post your own item for sale.");
+        setStatusMessage(
+          hasCatalogFilters
+            ? "Marketplace filters are active. Refine them any time to narrow down the listings."
+            : "Browse open listings, jump into a bidding war, or post your own item for sale."
+        );
       } else {
         setCatalogItems([]);
         setStatusTone("error");
@@ -165,7 +209,7 @@ export function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, currentUser, reloadKey]);
+  }, [accessToken, currentUser, catalogFilters, hasCatalogFilters, reloadKey]);
 
   useEffect(() => {
     if (!accessToken || !currentUser || !activeBidderId) {
@@ -256,6 +300,25 @@ export function Dashboard() {
     setSelectedItemId(item.itemId);
   }
 
+  function applyCatalogFilters() {
+    setCatalogFilters({
+      query: catalogFilterForm.query.trim() || undefined,
+      auctioneerId: catalogFilterForm.auctioneerId.trim() || undefined,
+      minPrice: parseNumber(catalogFilterForm.minPrice),
+      maxPrice: parseNumber(catalogFilterForm.maxPrice)
+    });
+  }
+
+  function clearCatalogFilters() {
+    setCatalogFilterForm({
+      query: "",
+      auctioneerId: "",
+      minPrice: "",
+      maxPrice: ""
+    });
+    setCatalogFilters({});
+  }
+
   if (!ready) {
     return (
       <main className="px-4 py-8 md:px-8 md:py-10">
@@ -291,7 +354,7 @@ export function Dashboard() {
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate md:text-lg">
                 5CBid is a campus marketplace for auction-style listings. Students can post items,
-                place bids, and get suggestions based on what they have been interested in already.
+                place bids, search the market, and get suggestions based on what they have been interested in already.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <span className="hero-chip">Student listings</span>
@@ -465,7 +528,7 @@ export function Dashboard() {
                 <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
                   <div className="grid gap-2 text-sm text-slate">
                     <p>You are browsing as a {currentUser.role.toLowerCase()}.</p>
-                    <p>Use the navigation bar to move between the marketplace and your profile.</p>
+                    <p>Use the navigation bar to move between the marketplace, activity, and your profile.</p>
                     <p>
                       {isBidder
                         ? "Your feed and recommendations update based on what you explore and bid on."
@@ -473,6 +536,9 @@ export function Dashboard() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3">
+                    <Link href="/activity" className="primary-button button-moss inline-flex w-fit">
+                      View activity
+                    </Link>
                     <Link href="/profile" className="primary-button button-tide inline-flex w-fit">
                       View profile
                     </Link>
@@ -491,12 +557,79 @@ export function Dashboard() {
                 </div>
               </SectionCard>
 
+              <SectionCard title="Find Listings" subtitle="Search And Filter">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <label className="field-label">
+                    Search listings
+                    <input
+                      className="field-input"
+                      placeholder="Name, item ID, seller, or description"
+                      value={catalogFilterForm.query}
+                      onChange={(event) =>
+                        setCatalogFilterForm((current) => ({ ...current, query: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="field-label">
+                    Seller ID
+                    <input
+                      className="field-input"
+                      placeholder="auctioneer username"
+                      value={catalogFilterForm.auctioneerId}
+                      onChange={(event) =>
+                        setCatalogFilterForm((current) => ({
+                          ...current,
+                          auctioneerId: event.target.value
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className="field-label">
+                    Min opening bid
+                    <input
+                      className="field-input"
+                      type="number"
+                      min={0}
+                      value={catalogFilterForm.minPrice}
+                      onChange={(event) =>
+                        setCatalogFilterForm((current) => ({ ...current, minPrice: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="field-label">
+                    Max opening bid
+                    <input
+                      className="field-input"
+                      type="number"
+                      min={0}
+                      value={catalogFilterForm.maxPrice}
+                      onChange={(event) =>
+                        setCatalogFilterForm((current) => ({ ...current, maxPrice: event.target.value }))
+                      }
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <button type="button" className="primary-button button-ink" onClick={applyCatalogFilters}>
+                    Apply filters
+                  </button>
+                  <button type="button" className="primary-button button-tide" onClick={clearCatalogFilters}>
+                    Clear filters
+                  </button>
+                </div>
+              </SectionCard>
+
               <ItemGrid
                 title="Open Listings"
-                subtitle="Campus Marketplace"
+                subtitle={hasCatalogFilters ? "Filtered Marketplace" : "Campus Marketplace"}
                 items={catalogItems}
                 selectedItemId={selectedItemId}
-                emptyMessage="No listings are live yet. A seller can post the first item."
+                emptyMessage={
+                  hasCatalogFilters
+                    ? "No listings match those filters right now. Try widening your search."
+                    : "No listings are live yet. A seller can post the first item."
+                }
                 onSelect={handleSelectItem}
               />
 
@@ -598,6 +731,17 @@ export function Dashboard() {
                       }
                     />
                   </div>
+                  <label className="field-label mt-3">
+                    Description
+                    <textarea
+                      className="field-input min-h-32 resize-y"
+                      placeholder="Tell buyers what the item is, what condition it is in, and anything they should know."
+                      value={itemPayload.description}
+                      onChange={(event) =>
+                        setItemPayload((current) => ({ ...current, description: event.target.value }))
+                      }
+                    />
+                  </label>
                   <button
                     type="button"
                     className="primary-button button-tide mt-4"
@@ -610,7 +754,7 @@ export function Dashboard() {
                         setCatalogItems((current) => mergeItems(current, [item]));
                         rememberItems([item]);
                         setSelectedItemId(item.itemId);
-                        setItemPayload({ itemId: "", itemName: "", startingPrice: 0 });
+                        setItemPayload({ itemId: "", itemName: "", startingPrice: 0, description: "" });
                         setReloadKey((current) => current + 1);
                       })
                     }

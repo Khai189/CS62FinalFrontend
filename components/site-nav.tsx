@@ -30,6 +30,9 @@ export function SiteNav() {
           <Link href="/" className={navClasses(pathname === "/")}>
             Marketplace
           </Link>
+          <Link href="/activity" className={navClasses(pathname === "/activity")}>
+            Activity
+          </Link>
           <Link href="/profile" className={navClasses(pathname === "/profile")}>
             Profile
           </Link>

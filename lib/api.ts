@@ -1,9 +1,11 @@
 import type {
+  ActiveBidSummary,
   ApiResponse,
   AuthSession,
   AuthUser,
   BidItem,
   Credentials,
+  ItemSearchFilters,
   ListItemPayload,
   PlaceBidPayload,
   RegisterPayload
@@ -57,8 +59,25 @@ export const api = {
     return request<AuthUser>("/auth/me", { method: "GET" }, accessToken);
   },
 
-  getAllItems(accessToken: string) {
-    return request<BidItem[]>("/items/all", { method: "GET" }, accessToken);
+  getAllItems(accessToken: string, filters?: ItemSearchFilters) {
+    const params = new URLSearchParams();
+
+    if (filters?.query) {
+      params.set("query", filters.query);
+    }
+    if (filters?.auctioneerId) {
+      params.set("auctioneerId", filters.auctioneerId);
+    }
+    if (typeof filters?.minPrice === "number") {
+      params.set("minPrice", String(filters.minPrice));
+    }
+    if (typeof filters?.maxPrice === "number") {
+      params.set("maxPrice", String(filters.maxPrice));
+    }
+
+    const queryString = params.toString();
+    const path = queryString ? `/items/all?${queryString}` : "/items/all";
+    return request<BidItem[]>(path, { method: "GET" }, accessToken);
   },
 
   listItem(accessToken: string, payload: ListItemPayload) {
@@ -89,6 +108,10 @@ export const api = {
 
   removeBid(accessToken: string, itemId: string) {
     return request<string>(`/bid/${encodeURIComponent(itemId)}`, { method: "DELETE" }, accessToken);
+  },
+
+  getActiveBids(accessToken: string) {
+    return request<ActiveBidSummary[]>("/bid/active", { method: "GET" }, accessToken);
   },
 
   getRecommendations(accessToken: string, bidderId: string, itemId: string, totalRecs: number) {
